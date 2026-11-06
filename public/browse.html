@@ -5,27 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Browse — TIPIZ</title>
     <link rel="stylesheet" href="/css/style.css" />
-
-    <!-- මේකයි අලුතින් එකතු කළේ (Mobile Grid Fix) -->
-    <style>
-      @media (max-width: 768px) {
-        .results-grid {
-          display: grid !important;
-          grid-template-columns: repeat(2, 1fr) !important;
-          gap: 12px !important;
-          padding: 15px 0 !important;
-          justify-items: stretch !important;
-        }
-        .results-grid .movie-card {
-          width: 100% !important;
-          max-width: 100% !important;
-        }
-        .results-grid .card-poster {
-          width: 100% !important;
-          aspect-ratio: 2 / 3 !important;
-        }
-      }
-    </style>
   </head>
   <body>
     <header class="site-header">
@@ -111,11 +90,11 @@
 
       const pageTitle = document.getElementById("page-title");
       if (type === "tv") {
-        pageTitle.textContent = "All TV Series";
+        pageTitle.textContent = "Popular TV Series";
         document.title = "TV Series — TIPIZ";
         document.getElementById("nav-tv").classList.add("active");
       } else {
-        pageTitle.textContent = "All Movies";
+        pageTitle.textContent = "Popular Movies";
         document.title = "Movies — TIPIZ";
         document.getElementById("nav-movies").classList.add("active");
       }
