@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sign In — TIPIZ</title>
+    <link rel="stylesheet" href="/css/style.css" />
+  </head>
+  <body>
+    <div class="auth-wrap">
+      <div class="auth-card">
+        <div class="logo">TIPIZ</div>
+        <div class="subtitle">Sign in to your account</div>
+
+        <div class="alert" id="alert"></div>
+
+        <form id="login-form">
+          <div class="field">
+            <label for="email">Email</label>
+            <input id="email" type="email" autocomplete="email" required />
+          </div>
+          <div class="field">
+            <label for="password">Password</label>
+            <input
+              id="password"
+              type="password"
+              autocomplete="current-password"
+              required
+            />
+          </div>
+          <button class="btn" type="submit" id="submit-btn">Sign In</button>
+        </form>
+
+        <div class="links">
+          <a href="/register.html">Create account</a>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="/js/api.js"></script>
+    <script type="module">
+      const { api } = window.tipiz;
+      const form = document.getElementById("login-form");
+      const alertBox = document.getElementById("alert");
+      const btn = document.getElementById("submit-btn");
+
+      function showAlert(msg, type = "error") {
+        alertBox.textContent = msg;
+        alertBox.className = `alert show ${type}`;
+      }
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        alertBox.className = "alert";
+        btn.disabled = true;
+        btn.textContent = "Signing in...";
+        try {
+          await api.login(
+            document.getElementById("email").value.trim(),
+            document.getElementById("password").value,
+          );
+          window.location.href = "/dashboard.html";
+        } catch (err) {
+          showAlert(err.message || "Login failed");
+          btn.disabled = false;
+          btn.textContent = "Sign In";
+        }
+      });
+    </script>
+  </body>
+</html>

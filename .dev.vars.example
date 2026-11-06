@@ -1,0 +1,22 @@
+# මේ file එක .dev.vars කියලා copy කරන්න. .dev.vars git එකට එකතු කරන්න එපා.
+
+# JWT sign කරන්න පාවිච්චි කරන රහස් string එක (අඩුම අක්ෂර 32)
+JWT_SECRET=change-me-to-a-long-random-string-at-least-32-chars
+
+# Password hashing එකට එකතු කරන අමතර රහස (pepper)
+PEPPER=change-me-to-another-long-random-string
+
+# TMDB API (පසු පියවරකදී පාවිච්චි කරමු)
+TMDB_API_KEY=4eb481af20ebae436d9a9253feacb4c4
+TMDB_ACCESS_TOKEN=
+TMDB_LANGUAGE=en-US
+
+# R2 presigned URL හදන්න (පසු පියවරකදී පාවිච්චි කරමු)
+R2_ACCOUNT_ID=
+R2_ACCESS_KEY_ID=
+R2_SECRET_ACCESS_KEY=
+
+# Admin setup token (පළමු admin account එක හදන්න)
+SETUP_TOKEN=change-me-to-a-one-time-secret
+
+ENVIRONMENT=development

@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Manage Movies — TIPIZ Admin</title>
+    <link rel="stylesheet" href="/css/style.css" />
+    <link rel="stylesheet" href="/css/admin.css" />
+  </head>
+  <body>
+    <div class="admin-layout">
+      <aside class="admin-sidebar">
+        <div class="brand">TIPIZ</div>
+        <nav>
+          <a href="/admin/index.html">Dashboard</a>
+          <a href="/admin/movies.html" class="active">Movies</a>
+          <a href="/admin/series.html">TV Series</a>
+          <a href="/admin/videos.html">Video Uploads</a>
+          <a href="/admin/tmdb.html">TMDB Import</a>
+          <a href="/admin/settings.html">Settings</a>
+          <a href="/dashboard.html">← Back to site</a>
+          <a href="#" id="logout">Logout</a>
+        </nav>
+      </aside>
+
+      <main class="admin-main">
+        <div class="admin-header">
+          <h1>Manage Movies</h1>
+          <p>Publish imported movies so they appear on the homepage</p>
+        </div>
+
+        <div class="admin-alert" id="alert"></div>
+
+        <div class="panel">
+          <div
+            style="
+              display: flex;
+              gap: 12px;
+              flex-wrap: wrap;
+              align-items: center;
+              margin-bottom: 20px;
+            "
+          >
+            <button class="btn-admin" id="publish-all-btn">
+              Publish All Drafts
+            </button>
+            <a class="btn-admin secondary" href="/admin/tmdb.html"
+              >+ Import from TMDB</a
+            >
+            <span
+              style="color: var(--muted); font-size: 13px; margin-left: auto"
+            >
+              Total:
+              <strong id="total-count" style="color: var(--text)">0</strong>
+            </span>
+          </div>
+
+          <div class="search-bar" style="margin-bottom: 0">
+            <input
+              id="filter-input"
+              type="text"
+              placeholder="Filter by title..."
+            />
+            <select id="filter-status">
+              <option value="all">All</option>
+              <option value="published">Published</option>
+              <option value="draft">Drafts</option>
+            </select>
+          </div>
+        </div>
+
+        <div
+          id="movies-list"
+          class="panel"
+          style="padding: 0; overflow: hidden"
+        >
+          <div style="padding: 40px; text-align: center; color: var(--muted)">
+            Loading...
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <script type="module" src="/js/api.js"></script>
+    <script type="module">
+      const { api } = window.tipiz;
+      const alertBox = document.getElementById("alert");
+      let allMovies = [];
+
+      function showAlert(msg, type = "error") {
+        alertBox.textContent = msg;
+        alertBox.className = `admin-alert show ${type}`;
+        setTimeout(() => {
+          alertBox.className = "admin-alert";
+        }, 5000);
+      }
+
+      function esc(s) {
+        return String(s == null ? "" : s).replace(
+          /[&<>"']/g,
+          (c) =>
+            ({
+              "&": "&amp;",
+              "<": "&lt;",
+              ">": "&gt;",
+              '"': "&quot;",
+              "'": "&#39;",
+            })[c],
+        );
+      }
+
+      async function loadMovies() {
+        try {
+          const { results } = await api.get("/api/admin/movies?limit=100");
+          allMovies = results || [];
+          document.getElementById("total-count").textContent = allMovies.length;
+          renderList();
+        } catch (err) {
+          if (err.status === 401 || err.status === 403) {
+            window.location.href = "/admin/login.html";
+          } else {
+            showAlert(err.message);
+          }
+        }
+      }
+
+      function renderList() {
+        const wrap = document.getElementById("movies-list");
+        const q = document
+          .getElementById("filter-input")
+          .value.trim()
+          .toLowerCase();
+        const statusFilter = document.getElementById("filter-status").value;
+
+        let filtered = allMovies;
+        if (q)
+          filtered = filtered.filter((m) =>
+            (m.title || "").toLowerCase().includes(q),
+          );
+        if (statusFilter !== "all")
+          filtered = filtered.filter((m) => m.status === statusFilter);
+
+        if (!filtered.length) {
+          wrap.innerHTML = `
+          <div style="padding:60px 20px;text-align:center;color:var(--muted);">
+            <div style="font-size:36px;margin-bottom:12px;">🎬</div>
+            <h3 style="color:var(--text);margin-bottom:8px;">No movies</h3>
+            <p>Import movies from TMDB first.</p>
+            <a class="btn-admin" href="/admin/tmdb.html" style="margin-top:20px;display:inline-block;">Import from TMDB</a>
+          </div>`;
+          return;
+        }
+
+        wrap.innerHTML = `
+        <table style="width:100%;border-collapse:collapse;">
+          <thead>
+            <tr style="background:var(--bg-3);border-bottom:1px solid var(--border);">
+              <th style="padding:12px 14px;text-align:left;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">Movie</th>
+              <th style="padding:12px 14px;text-align:left;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">Year</th>
+              <th style="padding:12px 14px;text-align:left;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">Rating</th>
+              <th style="padding:12px 14px;text-align:left;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">Status</th>
+              <th style="padding:12px 14px;text-align:right;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${filtered
+              .map(
+                (m) => `
+              <tr style="border-bottom:1px solid var(--border);">
+                <td style="padding:12px 14px;">
+                  <div style="display:flex;align-items:center;gap:12px;">
+                    <img src="${esc(m.poster_url || "")}" alt="" style="width:40px;height:60px;object-fit:cover;border-radius:4px;background:#0a0f1c;" />
+                    <div>
+                      <div style="font-weight:600;font-size:14px;">${esc(m.title)}</div>
+                      <div style="font-size:12px;color:var(--muted);">ID: ${m.id} · TMDB: ${m.tmdb_id || "—"}</div>
+                    </div>
+                  </div>
+                </td>
+                <td style="padding:12px 14px;font-size:13px;color:var(--muted);">${m.release_date ? String(m.release_date).slice(0, 4) : "—"}</td>
+                <td style="padding:12px 14px;font-size:13px;color:#fbbf24;">${m.vote_average ? "★ " + Number(m.vote_average).toFixed(1) : "—"}</td>
+                <td style="padding:12px 14px;">
+                  ${
+                    m.status === "published"
+                      ? '<span style="padding:4px 10px;background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.4);color:#86efac;border-radius:999px;font-size:11px;font-weight:600;">PUBLISHED</span>'
+                      : '<span style="padding:4px 10px;background:rgba(251,191,36,0.15);border:1px solid rgba(251,191,36,0.4);color:#fcd34d;border-radius:999px;font-size:11px;font-weight:600;">DRAFT</span>'
+                  }
+                </td>
+                <td style="padding:12px 14px;text-align:right;">
+                  <div style="display:flex;gap:6px;justify-content:flex-end;">
+                    ${
+                      m.status === "published"
+                        ? `<button class="btn-admin secondary" data-action="unpublish" data-id="${m.id}" style="padding:6px 12px;font-size:12px;">Unpublish</button>`
+                        : `<button class="btn-admin" data-action="publish" data-id="${m.id}" style="padding:6px 12px;font-size:12px;">Publish</button>`
+                    }
+                    <button class="btn-admin secondary" data-action="delete" data-id="${m.id}" style="padding:6px 12px;font-size:12px;color:#fca5a5;border-color:rgba(239,68,68,0.3);">Delete</button>
+                  </div>
+                </td>
+              </tr>
+            `,
+              )
+              .join("")}
+          </tbody>
+        </table>
+      `;
+
+        wrap.querySelectorAll("[data-action]").forEach((btn) => {
+          btn.addEventListener("click", () =>
+            handleAction(btn.dataset.action, btn.dataset.id, btn),
+          );
+        });
+      }
+
+      async function handleAction(action, id, btn) {
+        if (action === "delete") {
+          if (!confirm("Delete this movie? This cannot be undone.")) return;
+        }
+
+        btn.disabled = true;
+        const originalText = btn.textContent;
+        btn.textContent = "...";
+
+        try {
+          if (action === "publish") {
+            await api.patch(`/api/movies/${id}/status`, {
+              status: "published",
+            });
+            showAlert("Movie published", "success");
+          } else if (action === "unpublish") {
+            await api.patch(`/api/movies/${id}/status`, { status: "draft" });
+            showAlert("Movie unpublished", "success");
+          } else if (action === "delete") {
+            await api.del(`/api/movies/${id}`);
+            showAlert("Movie deleted", "success");
+          }
+          loadMovies();
+        } catch (err) {
+          showAlert(err.message);
+          btn.disabled = false;
+          btn.textContent = originalText;
+        }
+      }
+
+      document
+        .getElementById("filter-input")
+        .addEventListener("input", renderList);
+      document
+        .getElementById("filter-status")
+        .addEventListener("change", renderList);
+
+      document
+        .getElementById("publish-all-btn")
+        .addEventListener("click", async (e) => {
+          if (
+            !confirm(
+              "Publish ALL draft movies? They will immediately appear on the homepage.",
+            )
+          )
+            return;
+
+          const btn = e.currentTarget;
+          btn.disabled = true;
+          btn.textContent = "Publishing...";
+
+          try {
+            const res = await api.post("/api/admin/movies/publish-drafts", {});
+            showAlert(`${res.count} movie(s) published`, "success");
+            loadMovies();
+          } catch (err) {
+            showAlert(err.message);
+          } finally {
+            btn.disabled = false;
+            btn.textContent = "Publish All Drafts";
+          }
+        });
+
+      document.getElementById("logout").addEventListener("click", async (e) => {
+        e.preventDefault();
+        await api.logout();
+        window.location.href = "/admin/login.html";
+      });
+
+      loadMovies();
+    </script>
+  </body>
+</html>

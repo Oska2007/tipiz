@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Search — TIPIZ</title>
+    <link rel="stylesheet" href="/css/style.css" />
+
+    <!-- මේකයි අලුතින් එකතු කළේ (Mobile Grid Fix) -->
+    <style>
+      @media (max-width: 768px) {
+        .results-grid {
+          display: grid !important;
+          grid-template-columns: repeat(2, 1fr) !important;
+          gap: 12px !important;
+          padding: 15px 0 !important;
+          justify-items: stretch !important;
+        }
+        .results-grid .movie-card {
+          width: 100% !important;
+          max-width: 100% !important;
+        }
+        .results-grid .card-poster {
+          width: 100% !important;
+          aspect-ratio: 2 / 3 !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <a href="/" class="site-logo">TIPIZ</a>
+        <nav class="site-nav">
+          <a href="/">Home</a>
+          <a href="/browse.html?type=movie">Movies</a>
+          <a href="/browse.html?type=tv">TV Series</a>
+        </nav>
+
+        <a href="/search.html" class="nav-filter-icon" title="Search & Filters">
+          <svg
+            width="20"
+            height="20"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <line x1="4" y1="21" x2="4" y2="14"></line>
+            <line x1="4" y1="10" x2="4" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="12"></line>
+            <line x1="12" y1="8" x2="12" y2="3"></line>
+            <line x1="20" y1="21" x2="20" y2="16"></line>
+            <line x1="20" y1="12" x2="20" y2="3"></line>
+            <line x1="1" y1="14" x2="7" y2="14"></line>
+            <line x1="9" y1="8" x2="15" y2="8"></line>
+            <line x1="17" y1="16" x2="23" y2="16"></line>
+          </svg>
+        </a>
+
+        <div class="nav-auth" id="nav-auth"></div>
+      </div>
+    </header>
+
+    <main>
+      <div class="search-page-wrap">
+        <div class="search-header">
+          <h1>Explore</h1>
+          <p>Find your next favorite movie or TV series</p>
+        </div>
+
+        <form id="search-form">
+          <div class="search-bar-row">
+            <div class="search-input-wrap">
+              <svg
+                width="20"
+                height="20"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                viewBox="0 0 24 24"
+              >
+                <circle cx="11" cy="11" r="8" />
+                <path d="M21 21l-4.35-4.35" />
+              </svg>
+              <input id="q" type="text" placeholder="Search by title..." />
+            </div>
+            <button type="submit" class="btn-main-search">Search</button>
+          </div>
+
+          <div class="filters-grid">
+            <div class="filter-box">
+              <label>Type</label>
+              <select id="type">
+                <option value="all">All</option>
+                <option value="movie">Movies</option>
+                <option value="tv">TV Series</option>
+              </select>
+            </div>
+            <div class="filter-box">
+              <label>Genre</label>
+              <select id="genre">
+                <option value="">All Genres</option>
+                <option value="Action">Action</option>
+                <option value="Adventure">Adventure</option>
+                <option value="Animation">Animation</option>
+                <option value="Comedy">Comedy</option>
+                <option value="Crime">Crime</option>
+                <option value="Documentary">Documentary</option>
+                <option value="Drama">Drama</option>
+                <option value="Family">Family</option>
+                <option value="Fantasy">Fantasy</option>
+                <option value="Horror">Horror</option>
+                <option value="Mystery">Mystery</option>
+                <option value="Romance">Romance</option>
+                <option value="Science Fiction">Science Fiction</option>
+                <option value="Thriller">Thriller</option>
+                <option value="War">War</option>
+                <option value="Western">Western</option>
+              </select>
+            </div>
+            <div class="filter-box">
+              <label>Year</label>
+              <input
+                id="year"
+                type="number"
+                min="1900"
+                max="2030"
+                placeholder="e.g. 2024"
+              />
+            </div>
+            <div class="filter-box">
+              <label>Language</label>
+              <select id="language">
+                <option value="">Any</option>
+                <option value="en">English</option>
+                <option value="si">Sinhala</option>
+                <option value="hi">Hindi</option>
+                <option value="ta">Tamil</option>
+                <option value="ja">Japanese</option>
+                <option value="ko">Korean</option>
+              </select>
+            </div>
+          </div>
+        </form>
+
+        <div id="results-wrap" class="results-grid"></div>
+        <div id="empty" class="empty-state" style="display: none">
+          <div class="icon">🔍</div>
+          <h3>No results found</h3>
+          <p>Try adjusting your search or filters.</p>
+        </div>
+      </div>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-bottom">
+          <div class="tmdb-attribution">
+            Movie &amp; TV metadata provided by <strong>TMDB</strong>. Not
+            endorsed by TMDB.
+          </div>
+          <div style="margin-top: 8px">© TIPIZ</div>
+        </div>
+      </div>
+    </footer>
+
+    <script type="module" src="/js/api.js"></script>
+    <script type="module">
+      import { movieCard, initPage } from "/js/app.js";
+      const { api } = window.tipiz;
+
+      initPage();
+
+      const params = new URLSearchParams(window.location.search);
+      document.getElementById("q").value = params.get("q") || "";
+      document.getElementById("type").value = params.get("type") || "all";
+      document.getElementById("genre").value = params.get("genre") || "";
+      document.getElementById("year").value = params.get("year") || "";
+      document.getElementById("language").value = params.get("lang") || "";
+
+      document.getElementById("search-form").addEventListener("submit", (e) => {
+        e.preventDefault();
+        const p = new URLSearchParams();
+        const q = document.getElementById("q").value.trim();
+        const type = document.getElementById("type").value;
+        const genre = document.getElementById("genre").value;
+        const year = document.getElementById("year").value.trim();
+        const lang = document.getElementById("language").value;
+
+        if (q) p.set("q", q);
+        if (type && type !== "all") p.set("type", type);
+        if (genre) p.set("genre", genre);
+        if (year) p.set("year", year);
+        if (lang) p.set("lang", lang);
+
+        window.location.href = "/search.html?" + p.toString();
+      });
+
+      async function runSearch() {
+        const q = params.get("q");
+        const genre = params.get("genre");
+        const year = params.get("year");
+
+        if (!q && !genre && !year) {
+          document.getElementById("empty").style.display = "block";
+          return;
+        }
+
+        try {
+          let url = `/api/search?limit=50`;
+          if (q) url += `&q=${encodeURIComponent(q)}`;
+          if (params.get("type")) url += `&type=${params.get("type")}`;
+          if (genre) url += `&genre=${encodeURIComponent(genre)}`;
+          if (year) url += `&year=${year}`;
+
+          const { results } = await api.get(url);
+          const wrap = document.getElementById("results-wrap");
+
+          if (!results || !results.length) {
+            document.getElementById("empty").style.display = "block";
+            wrap.innerHTML = "";
+            return;
+          }
+
+          document.getElementById("empty").style.display = "none";
+          wrap.innerHTML = results.map(movieCard).join("");
+        } catch (err) {
+          console.error(err);
+        }
+      }
+
+      runSearch();
+    </script>
+  </body>
+</html>

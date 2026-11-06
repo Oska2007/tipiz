@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Settings — TIPIZ Admin</title>
+    <link rel="stylesheet" href="/css/style.css" />
+    <link rel="stylesheet" href="/css/admin.css" />
+  </head>
+  <body>
+    <div class="admin-layout">
+      <aside class="admin-sidebar">
+        <div class="brand">TIPIZ</div>
+        <nav>
+          <a href="/admin/index.html">Dashboard</a>
+          <a href="/admin/movies.html">Movies</a>
+          <!-- අලුතින් -->
+          <a href="/admin/series.html">TV Series</a>
+          <!-- අලුතින් -->
+          <a href="/admin/videos.html">Video Uploads</a>
+          <a href="/admin/tmdb.html">TMDB Import</a>
+          <a href="/admin/settings.html">Settings</a>
+          <a href="/dashboard.html">← Back to site</a>
+          <a href="#" id="logout">Logout</a>
+        </nav>
+      </aside>
+
+      <main class="admin-main">
+        <div class="admin-header">
+          <h1>Settings</h1>
+          <p>Configure TMDB API and site preferences</p>
+        </div>
+
+        <div class="admin-alert" id="alert"></div>
+
+        <form class="panel" id="settings-form">
+          <h2>TMDB API</h2>
+
+          <div class="form-row">
+            <label for="tmdb_api_key">TMDB API Key (v3)</label>
+            <input
+              id="tmdb_api_key"
+              type="password"
+              placeholder="Loading..."
+              autocomplete="off"
+            />
+            <div class="hint" id="tmdb-key-hint">
+              Get a free key at themoviedb.org → Settings → API
+            </div>
+          </div>
+
+          <div class="form-row">
+            <label for="tmdb_language">TMDB Language</label>
+            <input
+              id="tmdb_language"
+              type="text"
+              value="en-US"
+              placeholder="en-US"
+            />
+            <div class="hint">ISO code, e.g. en-US, si-LK, hi-IN</div>
+          </div>
+
+          <button class="btn-admin" type="submit" id="save-btn">
+            Save Settings
+          </button>
+        </form>
+
+        <form class="panel" id="site-form">
+          <h2>Site</h2>
+
+          <div class="form-row">
+            <label for="site_name">Site Name</label>
+            <input id="site_name" type="text" value="TIPIZ" />
+          </div>
+
+          <div class="form-row">
+            <label for="site_tagline">Tagline</label>
+            <input
+              id="site_tagline"
+              type="text"
+              value="Watch Movies & TV Series"
+            />
+          </div>
+
+          <button class="btn-admin" type="submit" id="save-site-btn">
+            Save Site Settings
+          </button>
+        </form>
+      </main>
+    </div>
+
+    <script type="module" src="/js/api.js"></script>
+    <script type="module">
+      const { api } = window.tipiz;
+      const alertBox = document.getElementById("alert");
+
+      function showAlert(msg, type = "error") {
+        alertBox.textContent = msg;
+        alertBox.className = `admin-alert show ${type}`;
+        setTimeout(() => {
+          alertBox.className = "admin-alert";
+        }, 5000);
+      }
+
+      async function loadSettings() {
+        try {
+          const { settings } = await api.get("/api/settings");
+          const keyInput = document.getElementById("tmdb_api_key");
+          const hint = document.getElementById("tmdb-key-hint");
+
+          if (settings.tmdb_api_key?.set) {
+            keyInput.placeholder = settings.tmdb_api_key.masked + " (saved)";
+            hint.innerHTML =
+              "A key is currently saved. Leave empty to keep it, or type a new one to replace it.";
+          } else {
+            keyInput.placeholder = "Paste your TMDB API key";
+          }
+
+          if (settings.tmdb_language?.set) {
+            document.getElementById("tmdb_language").value =
+              settings.tmdb_language.value || "en-US";
+          }
+          if (settings.site_name?.value) {
+            document.getElementById("site_name").value =
+              settings.site_name.value;
+          }
+          if (settings.site_tagline?.value) {
+            document.getElementById("site_tagline").value =
+              settings.site_tagline.value;
+          }
+        } catch (err) {
+          if (err.status === 401 || err.status === 403) {
+            window.location.href = "/admin/login.html";
+          } else {
+            showAlert(err.message);
+          }
+        }
+      }
+
+      loadSettings();
+
+      // TMDB + language form
+      document
+        .getElementById("settings-form")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const btn = document.getElementById("save-btn");
+          btn.disabled = true;
+          btn.textContent = "Saving...";
+          try {
+            const payload = {
+              tmdb_language: document
+                .getElementById("tmdb_language")
+                .value.trim(),
+            };
+            const key = document.getElementById("tmdb_api_key").value.trim();
+            if (key) payload.tmdb_api_key = key;
+
+            await api.post("/api/settings", payload);
+            showAlert("Settings saved", "success");
+            document.getElementById("tmdb_api_key").value = "";
+            loadSettings();
+          } catch (err) {
+            showAlert(err.message);
+          } finally {
+            btn.disabled = false;
+            btn.textContent = "Save Settings";
+          }
+        });
+
+      // Site form
+      document
+        .getElementById("site-form")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const btn = document.getElementById("save-site-btn");
+          btn.disabled = true;
+          btn.textContent = "Saving...";
+          try {
+            await api.post("/api/settings", {
+              site_name: document.getElementById("site_name").value.trim(),
+              site_tagline: document
+                .getElementById("site_tagline")
+                .value.trim(),
+            });
+            showAlert("Site settings saved", "success");
+          } catch (err) {
+            showAlert(err.message);
+          } finally {
+            btn.disabled = false;
+            btn.textContent = "Save Site Settings";
+          }
+        });
+
+      document.getElementById("logout").addEventListener("click", async (e) => {
+        e.preventDefault();
+        await api.logout();
+        window.location.href = "/admin/login.html";
+      });
+    </script>
+  </body>
+</html>

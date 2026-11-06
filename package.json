@@ -1,0 +1,16 @@
+{
+  "name": "tipiz",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:migrate:local": "wrangler d1 migrations apply tipiz-db --local",
+    "db:migrate:remote": "wrangler d1 migrations apply tipiz-db --remote",
+    "db:tables": "wrangler d1 execute tipiz-db --remote --command \"SELECT name FROM sqlite_master WHERE type='table' ORDER BY name;\""
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}

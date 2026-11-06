@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TMDB Import — TIPIZ Admin</title>
+    <link rel="stylesheet" href="/css/style.css" />
+    <link rel="stylesheet" href="/css/admin.css" />
+  </head>
+  <body>
+    <div class="admin-layout">
+      <aside class="admin-sidebar">
+        <div class="brand">TIPIZ</div>
+        <nav>
+          <a href="/admin/index.html">Dashboard</a>
+          <a href="/admin/movies.html">Movies</a>
+          <!-- අලුතින් -->
+          <a href="/admin/series.html">TV Series</a>
+          <!-- අලුතින් -->
+          <a href="/admin/videos.html">Video Uploads</a>
+          <a href="/admin/tmdb.html">TMDB Import</a>
+          <a href="/admin/settings.html">Settings</a>
+          <a href="/dashboard.html">← Back to site</a>
+          <a href="#" id="logout">Logout</a>
+        </nav>
+      </aside>
+
+      <main class="admin-main">
+        <div class="admin-header">
+          <h1>Import from TMDB</h1>
+          <p>Search TMDB and import movies or TV series</p>
+        </div>
+
+        <div class="admin-alert" id="alert"></div>
+
+        <form class="search-bar" id="search-form">
+          <select id="search-type">
+            <option value="movie">Movies</option>
+            <option value="tv">TV Series</option>
+          </select>
+          <input
+            id="search-query"
+            type="text"
+            placeholder="Search for a movie or series..."
+            required
+          />
+          <button class="btn-admin" type="submit" id="search-btn">
+            Search
+          </button>
+        </form>
+
+        <div id="results-wrap" style="display: none">
+          <h2
+            style="font-size: 16px; margin-bottom: 16px"
+            id="results-header"
+          ></h2>
+          <div class="results-grid" id="results"></div>
+        </div>
+      </main>
+    </div>
+
+    <script type="module" src="/js/api.js"></script>
+    <script type="module">
+      const { api } = window.tipiz;
+      const alertBox = document.getElementById("alert");
+
+      function showAlert(msg, type = "error") {
+        alertBox.textContent = msg;
+        alertBox.className = `admin-alert show ${type}`;
+        setTimeout(() => {
+          alertBox.className = "admin-alert";
+        }, 6000);
+      }
+
+      document
+        .getElementById("search-form")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const q = document.getElementById("search-query").value.trim();
+          const type = document.getElementById("search-type").value;
+          if (!q) return;
+
+          const btn = document.getElementById("search-btn");
+          btn.disabled = true;
+          btn.textContent = "Searching...";
+
+          try {
+            const { results } = await api.get(
+              `/api/tmdb/search?q=${encodeURIComponent(q)}&type=${type}`,
+            );
+
+            renderResults(results || [], type);
+          } catch (err) {
+            if (err.status === 401 || err.status === 403) {
+              window.location.href = "/admin/login.html";
+            } else {
+              showAlert(err.message);
+            }
+          } finally {
+            btn.disabled = false;
+            btn.textContent = "Search";
+          }
+        });
+
+      function renderResults(results, type) {
+        const wrap = document.getElementById("results-wrap");
+        const header = document.getElementById("results-header");
+        const grid = document.getElementById("results");
+
+        if (!results.length) {
+          wrap.style.display = "block";
+          header.textContent = "No results found.";
+          grid.innerHTML = "";
+          return;
+        }
+
+        header.textContent = `${results.length} results`;
+        grid.innerHTML = results
+          .map((r) => {
+            const title = r.title || r.name || "Untitled";
+            const date = r.release_date || r.first_air_date || "";
+            const year = date ? date.slice(0, 4) : "—";
+            const rating = r.vote_average ? r.vote_average.toFixed(1) : "—";
+            const poster =
+              r.poster_url ||
+              'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="300"><rect width="200" height="300" fill="%230a0f1c"/></svg>';
+
+            return `
+          <div class="result-card">
+            <img src="${poster}" alt="${escapeHtml(title)}" loading="lazy" />
+            <div class="body">
+              <div class="title" title="${escapeHtml(title)}">${escapeHtml(title)}</div>
+              <div class="meta">${year} · ⭐ ${rating}</div>
+              <button class="btn-import" data-id="${r.id}" data-type="${type}" data-title="${escapeHtml(title)}">
+                Import
+              </button>
+            </div>
+          </div>
+        `;
+          })
+          .join("");
+
+        grid.querySelectorAll(".btn-import").forEach((b) => {
+          b.addEventListener("click", handleImport);
+        });
+
+        wrap.style.display = "block";
+      }
+
+      async function handleImport(e) {
+        const btn = e.currentTarget;
+        const tmdbId = btn.dataset.id;
+        const type = btn.dataset.type;
+        const title = btn.dataset.title;
+
+        btn.disabled = true;
+        btn.textContent = "Importing...";
+
+        try {
+          const path = type === "tv" ? "/api/tv/import" : "/api/movies/import";
+          const res = await api.post(path, { tmdb_id: parseInt(tmdbId, 10) });
+          btn.textContent = "✓ Imported";
+          showAlert(
+            `${type === "tv" ? "Series" : "Movie"} "${title}" imported (ID ${res.id}). Go to /admin/ to publish it.`,
+            "success",
+          );
+        } catch (err) {
+          btn.disabled = false;
+          btn.textContent = "Import";
+          showAlert(err.message);
+        }
+      }
+
+      function escapeHtml(s) {
+        return String(s).replace(
+          /[&<>"']/g,
+          (c) =>
+            ({
+              "&": "&amp;",
+              "<": "&lt;",
+              ">": "&gt;",
+              '"': "&quot;",
+              "'": "&#39;",
+            })[c],
+        );
+      }
+
+      document.getElementById("logout").addEventListener("click", async (e) => {
+        e.preventDefault();
+        await api.logout();
+        window.location.href = "/admin/login.html";
+      });
+    </script>
+  </body>
+</html>

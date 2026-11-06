@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Browse — TIPIZ</title>
+    <link rel="stylesheet" href="/css/style.css" />
+
+    <!-- මේකයි අලුතින් එකතු කළේ (Mobile Grid Fix) -->
+    <style>
+      @media (max-width: 768px) {
+        .results-grid {
+          display: grid !important;
+          grid-template-columns: repeat(2, 1fr) !important;
+          gap: 12px !important;
+          padding: 15px 0 !important;
+          justify-items: stretch !important;
+        }
+        .results-grid .movie-card {
+          width: 100% !important;
+          max-width: 100% !important;
+        }
+        .results-grid .card-poster {
+          width: 100% !important;
+          aspect-ratio: 2 / 3 !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <a href="/" class="site-logo">TIPIZ</a>
+        <nav class="site-nav">
+          <a href="/">Home</a>
+          <a href="/browse.html?type=movie" id="nav-movies">Movies</a>
+          <a href="/browse.html?type=tv" id="nav-tv">TV Series</a>
+        </nav>
+
+        <a href="/search.html" class="nav-filter-icon" title="Search & Filters">
+          <svg
+            width="20"
+            height="20"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <line x1="4" y1="21" x2="4" y2="14"></line>
+            <line x1="4" y1="10" x2="4" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="12"></line>
+            <line x1="12" y1="8" x2="12" y2="3"></line>
+            <line x1="20" y1="21" x2="20" y2="16"></line>
+            <line x1="20" y1="12" x2="20" y2="3"></line>
+            <line x1="1" y1="14" x2="7" y2="14"></line>
+            <line x1="9" y1="8" x2="15" y2="8"></line>
+            <line x1="17" y1="16" x2="23" y2="16"></line>
+          </svg>
+        </a>
+
+        <div class="nav-auth" id="nav-auth"></div>
+      </div>
+    </header>
+
+    <main>
+      <div class="container" style="padding-top: 40px">
+        <div class="section-header" style="margin-bottom: 24px">
+          <h1 id="page-title" style="font-size: 32px">Browse</h1>
+        </div>
+
+        <div id="results-grid" class="results-grid"></div>
+
+        <div style="text-align: center; padding: 40px 0">
+          <button
+            id="load-more-btn"
+            class="btn-hero btn-hero-secondary"
+            style="display: none"
+          >
+            Load More
+          </button>
+        </div>
+      </div>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-bottom">
+          <div class="tmdb-attribution">
+            Movie &amp; TV metadata provided by <strong>TMDB</strong>. Not
+            endorsed by TMDB.
+          </div>
+          <div style="margin-top: 8px">© TIPIZ</div>
+        </div>
+      </div>
+    </footer>
+
+    <script type="module" src="/js/api.js"></script>
+    <script type="module">
+      import { movieCard, initPage, esc } from "/js/app.js";
+      const { api } = window.tipiz;
+
+      initPage();
+
+      const params = new URLSearchParams(window.location.search);
+      const type = params.get("type") || "movie";
+      const limit = 12;
+      let currentPage = 1;
+      let totalPages = 1;
+
+      const pageTitle = document.getElementById("page-title");
+      if (type === "tv") {
+        pageTitle.textContent = "All TV Series";
+        document.title = "TV Series — TIPIZ";
+        document.getElementById("nav-tv").classList.add("active");
+      } else {
+        pageTitle.textContent = "All Movies";
+        document.title = "Movies — TIPIZ";
+        document.getElementById("nav-movies").classList.add("active");
+      }
+
+      async function loadItems(page) {
+        const grid = document.getElementById("results-grid");
+        const loadMoreBtn = document.getElementById("load-more-btn");
+
+        if (page === 1)
+          grid.innerHTML =
+            '<div style="color:var(--muted); grid-column: 1/-1; text-align:center; padding:40px;">Loading...</div>';
+        else {
+          loadMoreBtn.textContent = "Loading...";
+          loadMoreBtn.disabled = true;
+        }
+
+        try {
+          const endpoint =
+            type === "tv"
+              ? `/api/tv?page=${page}&limit=${limit}`
+              : `/api/movies?page=${page}&limit=${limit}`;
+          const data = await api.get(endpoint);
+
+          totalPages = data.total_pages || 1;
+
+          if (page === 1 && (!data.results || !data.results.length)) {
+            grid.innerHTML =
+              '<div class="empty-state" style="grid-column: 1/-1;"><h3>No items found</h3></div>';
+            return;
+          }
+
+          const html = data.results.map(movieCard).join("");
+          if (page === 1) grid.innerHTML = html;
+          else grid.insertAdjacentHTML("beforeend", html);
+
+          if (currentPage < totalPages) {
+            loadMoreBtn.style.display = "inline-block";
+            loadMoreBtn.textContent = "Load More";
+            loadMoreBtn.disabled = false;
+          } else {
+            loadMoreBtn.style.display = "none";
+          }
+        } catch (err) {
+          grid.innerHTML = `<div style="color:var(--danger); grid-column: 1/-1; text-align:center;">${esc(err.message)}</div>`;
+        }
+      }
+
+      loadItems(currentPage);
+      document.getElementById("load-more-btn").onclick = () => {
+        currentPage++;
+        loadItems(currentPage);
+      };
+    </script>
+  </body>
+</html>

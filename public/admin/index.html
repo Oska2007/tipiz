@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin Dashboard — TIPIZ</title>
+    <link rel="stylesheet" href="/css/style.css" />
+    <link rel="stylesheet" href="/css/admin.css" />
+  </head>
+  <body>
+    <div class="admin-layout">
+      <aside class="admin-sidebar">
+        <div class="brand">TIPIZ</div>
+        <nav>
+          <a href="/admin/index.html">Dashboard</a>
+          <a href="/admin/movies.html">Movies</a>
+          <!-- අලුතින් -->
+          <a href="/admin/series.html">TV Series</a>
+          <!-- අලුතින් -->
+          <a href="/admin/videos.html">Video Uploads</a>
+          <a href="/admin/tmdb.html">TMDB Import</a>
+          <a href="/admin/settings.html">Settings</a>
+          <a href="/dashboard.html">← Back to site</a>
+          <a href="#" id="logout">Logout</a>
+        </nav>
+      </aside>
+
+      <main class="admin-main">
+        <div class="admin-header">
+          <h1>Dashboard</h1>
+          <p>Overview of your TIPIZ library</p>
+        </div>
+
+        <div class="admin-alert" id="alert"></div>
+
+        <div class="stats-grid" id="stats">
+          <!-- populated by JS -->
+        </div>
+
+        <div class="panel">
+          <h2>Quick actions</h2>
+          <div style="display: flex; gap: 12px; flex-wrap: wrap">
+            <a class="btn-admin" href="/admin/tmdb.html">Import from TMDB</a>
+            <a class="btn-admin secondary" href="/admin/settings.html"
+              >Configure TMDB API Key</a
+            >
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <script type="module" src="/js/api.js"></script>
+    <script type="module">
+      const { api } = window.tipiz;
+      const alertBox = document.getElementById("alert");
+
+      function showAlert(msg, type = "error") {
+        alertBox.textContent = msg;
+        alertBox.className = `admin-alert show ${type}`;
+      }
+
+      // Auth check
+      (async () => {
+        try {
+          const { user } = await api.me();
+          if (user.role !== "admin") {
+            window.location.href = "/admin/login.html";
+            return;
+          }
+        } catch {
+          window.location.href = "/admin/login.html";
+          return;
+        }
+
+        try {
+          const { stats } = await api.get("/api/admin/dashboard");
+          const cards = [
+            {
+              label: "Total Movies",
+              value: stats.movies,
+              sub: `${stats.published_movies} published`,
+            },
+            {
+              label: "Total Series",
+              value: stats.series,
+              sub: `${stats.published_series} published`,
+            },
+            { label: "Users", value: stats.users },
+            { label: "Videos", value: stats.videos },
+            { label: "Storage", value: stats.storage_human },
+          ];
+          document.getElementById("stats").innerHTML = cards
+            .map(
+              (c) => `
+          <div class="stat-card">
+            <div class="label">${c.label}</div>
+            <div class="value">${c.value}</div>
+            ${c.sub ? `<div class="sub">${c.sub}</div>` : ""}
+          </div>
+        `,
+            )
+            .join("");
+        } catch (err) {
+          showAlert(err.message || "Failed to load dashboard");
+        }
+      })();
+
+      document.getElementById("logout").addEventListener("click", async (e) => {
+        e.preventDefault();
+        await api.logout();
+        window.location.href = "/admin/login.html";
+      });
+    </script>
+  </body>
+</html>

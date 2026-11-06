@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TIPIZ — Watch Movies & TV Series</title>
+    <meta name="description" content="TIPIZ — Stream movies and TV series." />
+    <link rel="stylesheet" href="/css/style.css" />
+  </head>
+  <body>
+    <!-- ═══════════ NAVBAR ═══════════ -->
+    <header class="site-header">
+      <div class="container">
+        <a href="/" class="site-logo">TIPIZ</a>
+        <nav class="site-nav">
+          <a href="/" class="active">Home</a>
+          <a href="/browse.html?type=movie">Movies</a>
+          <a href="/browse.html?type=tv">TV Series</a>
+        </nav>
+
+        <!-- Filter Icon (මෙතන තමයි වෙනස් වුණේ) -->
+        <a href="/search.html" class="nav-filter-icon" title="Search & Filters">
+          <svg
+            width="20"
+            height="20"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <line x1="4" y1="21" x2="4" y2="14"></line>
+            <line x1="4" y1="10" x2="4" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="12"></line>
+            <line x1="12" y1="8" x2="12" y2="3"></line>
+            <line x1="20" y1="21" x2="20" y2="16"></line>
+            <line x1="20" y1="12" x2="20" y2="3"></line>
+            <line x1="1" y1="14" x2="7" y2="14"></line>
+            <line x1="9" y1="8" x2="15" y2="8"></line>
+            <line x1="17" y1="16" x2="23" y2="16"></line>
+          </svg>
+        </a>
+
+        <div class="nav-auth" id="nav-auth">
+          <a href="/register.html" class="btn-nav">Sign up</a>
+        </div>
+      </div>
+    </header>
+
+    <!-- ═══════════ HERO SLIDER (Auto Scroll) ═══════════ -->
+    <section class="hero" id="hero" style="display: none">
+      <div class="hero-slider" id="hero-slider"></div>
+    </section>
+
+    <!-- ═══════════ MAIN CONTENT ROWS ═══════════ -->
+    <div class="container">
+      <!-- 1. Trending Now (6 Cards, No View All) -->
+      <section class="section row-section" id="s-trending">
+        <div class="section-header">
+          <h2>Trending Now</h2>
+        </div>
+        <div class="row-scroll" id="r-trending"></div>
+      </section>
+
+      <!-- 2. Movies (6 Cards, View All) -->
+      <section class="section row-section" id="s-movies">
+        <div class="section-header">
+          <h2>Movies</h2>
+          <a href="/browse.html?type=movie" class="view-all-link">View All →</a>
+        </div>
+        <div class="row-scroll" id="r-movies"></div>
+      </section>
+
+      <!-- 3. TV Series (6 Cards, View All) -->
+      <section class="section row-section" id="s-series">
+        <div class="section-header">
+          <h2>TV Series</h2>
+          <a href="/browse.html?type=tv" class="view-all-link">View All →</a>
+        </div>
+        <div class="row-scroll" id="r-series"></div>
+      </section>
+    </div>
+
+    <!-- ═══════════ FOOTER ═══════════ -->
+    <footer class="site-footer">
+      <div class="container">
+        <div>
+          <a
+            href="/"
+            class="site-logo"
+            style="margin-bottom: 12px; display: inline-block"
+            >TIPIZ</a
+          >
+          <p
+            style="
+              font-size: 13px;
+              color: var(--muted);
+              line-height: 1.7;
+              max-width: 340px;
+            "
+          >
+            Watch your favourite movies and TV series. High quality streaming on
+            any device.
+          </p>
+        </div>
+        <div>
+          <h4>Browse</h4>
+          <a href="/browse.html?type=movie">Movies</a>
+          <a href="/browse.html?type=tv">TV Series</a>
+          <a href="/dashboard.html">My Dashboard</a>
+        </div>
+        <div>
+          <h4>Account</h4>
+          <a href="/login.html">Sign in</a>
+          <a href="/register.html">Create account</a>
+        </div>
+      </div>
+      <div class="container">
+        <div class="footer-bottom">
+          <div class="tmdb-attribution">
+            Movie &amp; TV metadata provided by <strong>TMDB</strong>. Not
+            endorsed by TMDB.
+          </div>
+          <div style="margin-top: 8px">© TIPIZ — All rights reserved.</div>
+        </div>
+      </div>
+    </footer>
+
+    <script type="module" src="/js/api.js"></script>
+    <script type="module">
+      import { renderRow, initPage } from "/js/app.js";
+      const { api } = window.tipiz;
+
+      initPage();
+
+      async function loadHome() {
+        try {
+          const data = await api.get("/api/home");
+
+          // ── 1. Auto-Sliding Hero Banner (Movies 6) ──
+          let heroMovies = (data.trending || []).slice(0, 6);
+          if (heroMovies.length === 0) {
+            heroMovies = (data.popular || []).slice(0, 6);
+          }
+
+          if (heroMovies.length > 0) {
+            document.getElementById("hero").style.display = "block";
+            const slider = document.getElementById("hero-slider");
+
+            slider.innerHTML = heroMovies
+              .map((h) => {
+                const year = h.release_date ? h.release_date.slice(0, 4) : "";
+                const rating = h.vote_average
+                  ? Number(h.vote_average).toFixed(1)
+                  : "—";
+                const bgUrl = h.backdrop_url || "";
+
+                return `
+            <div class="hero-slide">
+              <div class="hero-bg" style="background-image: url(${bgUrl})"></div>
+              <div class="container">
+                <div class="hero-content">
+                  <h1>${h.title}</h1>
+                  <div class="hero-meta">
+                    <span class="rating" style="color:#fbbf24;font-weight:600;">★ ${rating}</span>
+                    ${year ? `<span>${year}</span>` : ""}
+                  </div>
+                  <p class="hero-overview">${h.overview || ""}</p>
+                  <div class="hero-actions">
+                    <a href="/movie.html?id=${h.id}" class="btn-hero btn-hero-primary">▶ Watch Now</a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          `;
+              })
+              .join("");
+
+            let currentIndex = 0;
+            setInterval(() => {
+              currentIndex = (currentIndex + 1) % heroMovies.length;
+              slider.style.transform = `translateX(-${currentIndex * 100}%)`;
+            }, 5000);
+          }
+
+          // ── 2. පහළ තියෙන Rows (කාඩ්පත් 6 බැගින්) ──
+          const trending6 = (data.trending || []).slice(0, 6);
+          const movies6 = (data.popular || []).slice(0, 6);
+          const series6 = (data.popular_series || []).slice(0, 6);
+
+          renderRow(document.getElementById("r-trending"), trending6);
+          renderRow(document.getElementById("r-movies"), movies6);
+          renderRow(document.getElementById("r-series"), series6);
+        } catch (err) {
+          console.error("Failed to load homepage:", err);
+        }
+      }
+
+      loadHome();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TV Series — TIPIZ</title>
+    <link rel="stylesheet" href="/css/style.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <a href="/" class="site-logo">TIPIZ</a>
+        <nav class="site-nav">
+          <a href="/">Home</a>
+          <a href="/browse.html?type=movie">Movies</a>
+          <a href="/browse.html?type=tv" class="active">TV Series</a>
+        </nav>
+
+        <a href="/search.html" class="nav-filter-icon" title="Search & Filters">
+          <svg
+            width="20"
+            height="20"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <line x1="4" y1="21" x2="4" y2="14"></line>
+            <line x1="4" y1="10" x2="4" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="12"></line>
+            <line x1="12" y1="8" x2="12" y2="3"></line>
+            <line x1="20" y1="21" x2="20" y2="16"></line>
+            <line x1="20" y1="12" x2="20" y2="3"></line>
+            <line x1="1" y1="14" x2="7" y2="14"></line>
+            <line x1="9" y1="8" x2="15" y2="8"></line>
+            <line x1="17" y1="16" x2="23" y2="16"></line>
+          </svg>
+        </a>
+
+        <div class="nav-auth" id="nav-auth"></div>
+      </div>
+    </header>
+
+    <main id="page">
+      <div
+        class="container"
+        style="padding: 60px 20px; text-align: center; color: var(--muted)"
+      >
+        Loading...
+      </div>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-bottom">
+          <div class="tmdb-attribution">
+            Movie &amp; TV metadata provided by <strong>TMDB</strong>. Not
+            endorsed by TMDB.
+          </div>
+          <div style="margin-top: 8px">© TIPIZ</div>
+        </div>
+      </div>
+    </footer>
+
+    <script type="module" src="/js/api.js"></script>
+    <script type="module">
+      import { initPage, esc, placeholderPoster } from "/js/app.js";
+      const { api } = window.tipiz;
+
+      initPage();
+
+      const id = new URLSearchParams(window.location.search).get("id");
+      if (!id) {
+        document.getElementById("page").innerHTML =
+          '<div class="container"><div class="empty-state"><h3>Series not found</h3></div></div>';
+      } else {
+        loadSeries(id);
+      }
+
+      async function loadSeries(id) {
+        try {
+          const { series } = await api.get(`/api/tv/${id}`);
+          document.title = `${series.name} — TIPIZ`;
+
+          const year = series.first_air_date
+            ? series.first_air_date.slice(0, 4)
+            : "";
+          const rating = series.vote_average
+            ? Number(series.vote_average).toFixed(1)
+            : "—";
+          const poster = series.poster_url || placeholderPoster();
+          const seasons = series.seasons || [];
+
+          const genresHtml =
+            series.genres && series.genres.length
+              ? `<div class="details-genres">${series.genres.map((g) => `<span class="genre-chip">${esc(g.name)}</span>`).join("")}</div>`
+              : "";
+          const trailer = series.trailer_key
+            ? `<div class="details-section"><h2>Trailer</h2><div class="trailer-wrap"><iframe src="https://www.youtube.com/embed/${esc(series.trailer_key)}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe></div></div>`
+            : "";
+
+          // Cast ලැයිස්තුවෙන් මුල් 6 දෙනා විතරක් ගන්නවා
+          const topCast = (series.cast || []).slice(0, 6);
+          const castHtml = topCast.length
+            ? `<div class="details-section"><h2>Cast</h2><div class="cast-grid">${topCast.map((c) => `<div class="cast-card"><img class="cast-photo" src="${c.profile_url || placeholderPoster()}" alt="${esc(c.name)}" loading="lazy" /><div class="cast-name">${esc(c.name)}</div><div class="cast-role">${esc(c.character || "")}</div></div>`).join("")}</div></div>`
+            : "";
+
+          const seasonsHtml = seasons.length
+            ? `
+        <div class="details-section">
+          <h2>Seasons & Episodes</h2>
+          <div class="season-tabs" id="season-tabs">
+            ${seasons.map((s, i) => `<button class="season-tab${i === 0 ? " active" : ""}" data-season-id="${s.id}" data-season-num="${s.season_number}">Season ${s.season_number}</button>`).join("")}
+          </div>
+          <div id="episodes-wrap"><div style="color:var(--muted);text-align:center;padding:20px;">Loading episodes...</div></div>
+        </div>`
+            : "";
+
+          document.getElementById("page").innerHTML = `
+        <section class="details-hero">
+          <div class="details-backdrop" style="background-image:url(${esc(series.backdrop_url || poster)})"></div>
+          <div class="container">
+            <div class="details-content">
+              <div class="details-poster"><img src="${esc(poster)}" alt="${esc(series.name)}" /></div>
+              <div class="details-info">
+                <h1>${esc(series.name)}</h1>
+                <div class="details-meta"><span class="rating">★ ${rating}</span>${year ? `<span>${year}</span>` : ""}${series.number_of_seasons ? `<span>${series.number_of_seasons} Season${series.number_of_seasons > 1 ? "s" : ""}</span>` : ""}</div>
+                ${genresHtml}
+                <p class="details-overview">${esc(series.overview || "")}</p>
+                
+                <div class="hero-actions" style="display:flex; gap:20px; flex-wrap:wrap; align-items:center; margin-top: 20px;">
+                  <button id="btn-watchlist" class="action-btn" data-type="tv" data-id="${series.id}">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14m-7-7h14"/></svg>
+                    <span id="btn-watchlist-text">Watchlist</span>
+                  </button>
+                  <button id="btn-favorite" class="action-btn fav-btn" data-type="tv" data-id="${series.id}">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                    <span id="btn-favorite-text">Favorite</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+        <div class="container">${trailer}${seasonsHtml}${castHtml}</div>
+      `;
+
+          setupListButtons("tv", series.id);
+
+          if (seasons.length) {
+            const tabs = document.querySelectorAll(".season-tab");
+            tabs.forEach((tab) => {
+              tab.addEventListener("click", () => {
+                tabs.forEach((t) => t.classList.remove("active"));
+                tab.classList.add("active");
+                loadEpisodes(id, tab.dataset.seasonNum);
+              });
+            });
+            loadEpisodes(id, seasons[0].season_number);
+          }
+        } catch (err) {
+          document.getElementById("page").innerHTML =
+            `<div class="container"><div class="empty-state"><h3>Series not found</h3><p>${esc(err.message)}</p><p style="margin-top:20px;"><a href="/" class="btn-nav">← Back to Home</a></p></div></div>`;
+        }
+      }
+
+      async function loadEpisodes(seriesId, seasonNumber) {
+        const wrap = document.getElementById("episodes-wrap");
+        try {
+          const { episodes } = await api.get(
+            `/api/tv/${seriesId}/episodes?season=${seasonNumber}`,
+          );
+          if (!episodes.length) {
+            wrap.innerHTML =
+              '<div style="color:var(--muted);text-align:center;padding:20px;">No episodes in this season.</div>';
+            return;
+          }
+          wrap.innerHTML = `<div class="episode-list">${episodes.map((ep) => `<div class="episode-item"><img class="episode-thumb" src="${esc(ep.still_url || placeholderPoster())}" alt="${esc(ep.name)}" loading="lazy" /><div class="episode-body"><div class="episode-num">S${seasonNumber} · E${ep.episode_number}</div><div class="episode-title">${esc(ep.name || "Untitled")}</div><div class="episode-overview">${esc(ep.overview || "")}</div></div></div>`).join("")}</div>`;
+        } catch (err) {
+          wrap.innerHTML = `<div style="color:var(--danger);text-align:center;padding:20px;">${esc(err.message)}</div>`;
+        }
+      }
+
+      async function setupListButtons(type, id) {
+        const btnList = document.getElementById("btn-watchlist");
+        const btnFav = document.getElementById("btn-favorite");
+        const btnListText = document.getElementById("btn-watchlist-text");
+        const btnFavText = document.getElementById("btn-favorite-text");
+        if (!btnList || !btnFav) return;
+
+        try {
+          const status = await api.get(
+            `/api/user/check-status?type=${type}&id=${id}`,
+          );
+          if (status.in_watchlist) {
+            btnList.classList.add("active");
+            btnListText.textContent = "In Watchlist";
+          }
+          if (status.in_favorites) {
+            btnFav.classList.add("active");
+            btnFavText.textContent = "Favorited";
+          }
+        } catch {
+          /* Not logged in */
+        }
+
+        btnList.onclick = async () => {
+          try {
+            const res = await api.post("/api/user/watchlist", {
+              media_type: type,
+              media_id: id,
+            });
+            if (res.status === "added") {
+              btnList.classList.add("active");
+              btnListText.textContent = "In Watchlist";
+            } else {
+              btnList.classList.remove("active");
+              btnListText.textContent = "Watchlist";
+            }
+          } catch (err) {
+            if (err.status === 401) alert("Please log in to add to watchlist.");
+          }
+        };
+
+        btnFav.onclick = async () => {
+          try {
+            const res = await api.post("/api/user/favorites", {
+              media_type: type,
+              media_id: id,
+            });
+            if (res.status === "added") {
+              btnFav.classList.add("active");
+              btnFavText.textContent = "Favorited";
+            } else {
+              btnFav.classList.remove("active");
+              btnFavText.textContent = "Favorite";
+            }
+          } catch (err) {
+            if (err.status === 401) alert("Please log in to favorite.");
+          }
+        };
+      }
+    </script>
+  </body>
+</html>

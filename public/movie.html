@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Movie — TIPIZ</title>
+    <link rel="stylesheet" href="/css/style.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <a href="/" class="site-logo">TIPIZ</a>
+        <nav class="site-nav">
+          <a href="/">Home</a>
+          <a href="/browse.html?type=movie" class="active">Movies</a>
+          <a href="/browse.html?type=tv">TV Series</a>
+        </nav>
+
+        <a href="/search.html" class="nav-filter-icon" title="Search & Filters">
+          <svg
+            width="20"
+            height="20"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <line x1="4" y1="21" x2="4" y2="14"></line>
+            <line x1="4" y1="10" x2="4" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="12"></line>
+            <line x1="12" y1="8" x2="12" y2="3"></line>
+            <line x1="20" y1="21" x2="20" y2="16"></line>
+            <line x1="20" y1="12" x2="20" y2="3"></line>
+            <line x1="1" y1="14" x2="7" y2="14"></line>
+            <line x1="9" y1="8" x2="15" y2="8"></line>
+            <line x1="17" y1="16" x2="23" y2="16"></line>
+          </svg>
+        </a>
+
+        <div class="nav-auth" id="nav-auth"></div>
+      </div>
+    </header>
+
+    <main id="page">
+      <div
+        class="container"
+        style="padding: 60px 20px; text-align: center; color: var(--muted)"
+      >
+        Loading...
+      </div>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-bottom">
+          <div class="tmdb-attribution">
+            Movie &amp; TV metadata provided by <strong>TMDB</strong>. Not
+            endorsed by TMDB.
+          </div>
+          <div style="margin-top: 8px">© TIPIZ</div>
+        </div>
+      </div>
+    </footer>
+
+    <script type="module" src="/js/api.js"></script>
+    <script type="module">
+      import { movieCard, initPage, esc, placeholderPoster } from "/js/app.js";
+      const { api } = window.tipiz;
+
+      initPage();
+
+      const id = new URLSearchParams(window.location.search).get("id");
+      if (!id) {
+        document.getElementById("page").innerHTML =
+          '<div class="container"><div class="empty-state"><h3>Movie not found</h3></div></div>';
+      } else {
+        loadMovie(id);
+      }
+
+      async function loadMovie(id) {
+        try {
+          const [{ movie }, { results: similar }] = await Promise.all([
+            api.get(`/api/movies/${id}`),
+            api.get(`/api/movies/${id}/similar`).catch(() => ({ results: [] })),
+          ]);
+
+          document.title = `${movie.title} — TIPIZ`;
+
+          const year = movie.release_date ? movie.release_date.slice(0, 4) : "";
+          const runtime = movie.runtime
+            ? `${Math.floor(movie.runtime / 60)}h ${movie.runtime % 60}m`
+            : "";
+          const rating = movie.vote_average
+            ? Number(movie.vote_average).toFixed(1)
+            : "—";
+          const poster = movie.poster_url || placeholderPoster();
+
+          const trailer = movie.trailer_key
+            ? `<div class="details-section"><h2>Trailer</h2><div class="trailer-wrap"><iframe src="https://www.youtube.com/embed/${esc(movie.trailer_key)}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe></div></div>`
+            : "";
+
+          // Cast ලැයිස්තුවෙන් මුල් 6 දෙනා විතරක් ගන්නවා
+          const topCast = (movie.cast || []).slice(0, 6);
+          const castHtml = topCast.length
+            ? `<div class="details-section"><h2>Cast</h2><div class="cast-grid">${topCast.map((c) => `<div class="cast-card"><img class="cast-photo" src="${c.profile_url || placeholderPoster()}" alt="${esc(c.name)}" loading="lazy" /><div class="cast-name">${esc(c.name)}</div><div class="cast-role">${esc(c.character || "")}</div></div>`).join("")}</div></div>`
+            : "";
+
+          const genresHtml =
+            movie.genres && movie.genres.length
+              ? `<div class="details-genres">${movie.genres.map((g) => `<span class="genre-chip">${esc(g.name)}</span>`).join("")}</div>`
+              : "";
+
+          const similarHtml =
+            similar && similar.length
+              ? `<div class="details-section"><h2>Similar Movies</h2><div class="row-scroll">${similar.map(movieCard).join("")}</div></div>`
+              : "";
+
+          const watchBtn = movie.video
+            ? `<a class="btn-hero btn-hero-primary" href="/watch.html?type=movie&id=${movie.id}">▶ Watch Now</a>`
+            : `<button class="btn-hero btn-hero-secondary" disabled style="opacity:0.5;cursor:not-allowed;">Video coming soon</button>`;
+
+          document.getElementById("page").innerHTML = `
+        <section class="details-hero">
+          <div class="details-backdrop" style="background-image:url(${esc(movie.backdrop_url || poster)})"></div>
+          <div class="container">
+            <div class="details-content">
+              <div class="details-poster"><img src="${esc(poster)}" alt="${esc(movie.title)}" /></div>
+              <div class="details-info">
+                <h1>${esc(movie.title)}</h1>
+                <div class="details-meta"><span class="rating">★ ${rating}</span>${year ? `<span>${year}</span>` : ""}${runtime ? `<span>${runtime}</span>` : ""}</div>
+                ${genresHtml}
+                <p class="details-overview">${esc(movie.overview || "")}</p>
+                
+                <div class="hero-actions" style="display:flex; gap:24px; flex-wrap:wrap; align-items:center; margin-top: 10px;">
+                  ${watchBtn}
+                  <div style="display:flex; gap:20px; align-items:center;">
+                    <button id="btn-watchlist" class="action-btn" data-type="movie" data-id="${movie.id}">
+                      <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14m-7-7h14"/></svg>
+                      <span id="btn-watchlist-text">Watchlist</span>
+                    </button>
+                    <button id="btn-favorite" class="action-btn fav-btn" data-type="movie" data-id="${movie.id}">
+                      <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                      <span id="btn-favorite-text">Favorite</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+        <div class="container">${trailer}${castHtml}${similarHtml}</div>
+      `;
+
+          setupListButtons("movie", movie.id);
+        } catch (err) {
+          document.getElementById("page").innerHTML =
+            `<div class="container"><div class="empty-state"><h3>Movie not found</h3><p>${esc(err.message)}</p><p style="margin-top:20px;"><a href="/" class="btn-nav">← Back to Home</a></p></div></div>`;
+        }
+      }
+
+      async function setupListButtons(type, id) {
+        const btnList = document.getElementById("btn-watchlist");
+        const btnFav = document.getElementById("btn-favorite");
+        const btnListText = document.getElementById("btn-watchlist-text");
+        const btnFavText = document.getElementById("btn-favorite-text");
+        if (!btnList || !btnFav) return;
+
+        try {
+          const status = await api.get(
+            `/api/user/check-status?type=${type}&id=${id}`,
+          );
+          if (status.in_watchlist) {
+            btnList.classList.add("active");
+            btnListText.textContent = "In Watchlist";
+          }
+          if (status.in_favorites) {
+            btnFav.classList.add("active");
+            btnFavText.textContent = "Favorited";
+          }
+        } catch {
+          /* Not logged in */
+        }
+
+        btnList.onclick = async () => {
+          try {
+            const res = await api.post("/api/user/watchlist", {
+              media_type: type,
+              media_id: id,
+            });
+            if (res.status === "added") {
+              btnList.classList.add("active");
+              btnListText.textContent = "In Watchlist";
+            } else {
+              btnList.classList.remove("active");
+              btnListText.textContent = "Watchlist";
+            }
+          } catch (err) {
+            if (err.status === 401) alert("Please log in to add to watchlist.");
+          }
+        };
+
+        btnFav.onclick = async () => {
+          try {
+            const res = await api.post("/api/user/favorites", {
+              media_type: type,
+              media_id: id,
+            });
+            if (res.status === "added") {
+              btnFav.classList.add("active");
+              btnFavText.textContent = "Favorited";
+            } else {
+              btnFav.classList.remove("active");
+              btnFavText.textContent = "Favorite";
+            }
+          } catch (err) {
+            if (err.status === 401) alert("Please log in to favorite.");
+          }
+        };
+      }
+    </script>
+  </body>
+</html>

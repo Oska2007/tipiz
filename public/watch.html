@@ -1,0 +1,587 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Watch — TIPIZ</title>
+    <link rel="stylesheet" href="/css/style.css" />
+
+    <!-- HLS.js (m3u8 සඳහා) -->
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.7/dist/hls.min.js"></script>
+
+    <style>
+      /* Player-specific styles */
+      .watch-page {
+        background: #000;
+        min-height: 100vh;
+      }
+      .player-container {
+        position: relative;
+        width: 100%;
+        max-width: 1400px;
+        margin: 0 auto;
+        background: #000;
+        aspect-ratio: 16 / 9;
+      }
+      .video-element {
+        width: 100%;
+        height: 100%;
+        display: block;
+        background: #000;
+      }
+
+      /* Custom Controls */
+      .player-controls {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        padding: 40px 20px 20px;
+        background: linear-gradient(to top, rgba(0, 0, 0, 0.9), transparent);
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        opacity: 0;
+        transition: opacity 0.2s;
+      }
+      .player-container:hover .player-controls,
+      .player-container.paused .player-controls {
+        opacity: 1;
+      }
+
+      .seek-bar {
+        width: 100%;
+        height: 6px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 3px;
+        cursor: pointer;
+        position: relative;
+      }
+      .seek-fill {
+        height: 100%;
+        background: var(--accent-1);
+        border-radius: 3px;
+        width: 0%;
+        position: relative;
+      }
+      .seek-fill::after {
+        content: "";
+        position: absolute;
+        right: -6px;
+        top: -3px;
+        width: 12px;
+        height: 12px;
+        background: #fff;
+        border-radius: 50%;
+      }
+
+      .controls-row {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        color: #fff;
+      }
+      .controls-row button {
+        background: transparent;
+        border: none;
+        color: #fff;
+        cursor: pointer;
+        font-size: 18px;
+        padding: 4px;
+        display: flex;
+        align-items: center;
+      }
+      .controls-row button:hover {
+        color: var(--accent-1);
+      }
+      .time-display {
+        font-size: 13px;
+        font-variant-numeric: tabular-nums;
+        color: #ccc;
+      }
+
+      .volume-wrap {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .volume-slider {
+        width: 80px;
+        accent-color: var(--accent-1);
+      }
+
+      .spacer {
+        flex: 1;
+      }
+
+      select.ctrl-select {
+        background: #111;
+        border: 1px solid #333;
+        color: #fff;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+      }
+
+      .resume-banner {
+        position: absolute;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(15, 20, 36, 0.95);
+        border: 1px solid var(--border);
+        padding: 14px 20px;
+        border-radius: 10px;
+        display: flex;
+        gap: 16px;
+        align-items: center;
+        z-index: 10;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+      }
+      .resume-banner p {
+        color: #fff;
+        font-size: 14px;
+        margin: 0;
+      }
+      .resume-banner button {
+        padding: 8px 16px;
+        border-radius: 6px;
+        border: none;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 13px;
+      }
+      .resume-yes {
+        background: var(--accent-1);
+        color: #fff;
+      }
+      .resume-no {
+        background: #333;
+        color: #fff;
+      }
+
+      .loading-spinner {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        color: var(--accent-1);
+        font-size: 40px;
+        animation: spin 1s linear infinite;
+      }
+      @keyframes spin {
+        100% {
+          transform: translate(-50%, -50%) rotate(360deg);
+        }
+      }
+
+      .watch-info {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 24px 20px;
+        color: var(--text);
+      }
+      .watch-info h1 {
+        font-size: 24px;
+        margin-bottom: 8px;
+      }
+      .watch-info .meta {
+        color: var(--muted);
+        font-size: 14px;
+        margin-bottom: 16px;
+      }
+      .watch-info .nav-btns {
+        display: flex;
+        gap: 12px;
+        margin-top: 20px;
+        flex-wrap: wrap;
+      }
+    </style>
+  </head>
+  <body class="watch-page">
+    <div class="player-container" id="player-wrap" style="display: none">
+      <video class="video-element" id="video" crossorigin="anonymous"></video>
+
+      <!-- Loading -->
+      <div class="loading-spinner" id="spinner">◌</div>
+
+      <!-- Resume Banner -->
+      <div class="resume-banner" id="resume-banner" style="display: none">
+        <p>Resume from <strong id="resume-time">00:00</strong>?</p>
+        <div style="display: flex; gap: 8px">
+          <button class="resume-yes" id="resume-yes">Resume</button>
+          <button class="resume-no" id="resume-no">Start Over</button>
+        </div>
+      </div>
+
+      <!-- Custom Controls -->
+      <div class="player-controls" id="controls">
+        <div class="seek-bar" id="seek-bar">
+          <div class="seek-fill" id="seek-fill"></div>
+        </div>
+
+        <div class="controls-row">
+          <button id="btn-play">▶</button>
+
+          <div class="volume-wrap">
+            <button id="btn-mute">🔊</button>
+            <input
+              type="range"
+              class="volume-slider"
+              id="volume"
+              min="0"
+              max="1"
+              step="0.05"
+              value="1"
+            />
+          </div>
+
+          <span class="time-display" id="time-display">0:00 / 0:00</span>
+
+          <div class="spacer"></div>
+
+          <select class="ctrl-select" id="speed">
+            <option value="0.5">0.5x</option>
+            <option value="0.75">0.75x</option>
+            <option value="1" selected>1x</option>
+            <option value="1.25">1.25x</option>
+            <option value="1.5">1.5x</option>
+            <option value="2">2x</option>
+          </select>
+
+          <select class="ctrl-select" id="subtitle-select">
+            <option value="">Subtitles Off</option>
+          </select>
+
+          <button id="btn-next" style="display: none" title="Next Episode">
+            ⏭
+          </button>
+          <button id="btn-fullscreen" title="Fullscreen">⛶</button>
+        </div>
+      </div>
+    </div>
+
+    <div
+      id="error-page"
+      style="
+        display: none;
+        padding: 100px 20px;
+        text-align: center;
+        color: #fff;
+      "
+    >
+      <h1 style="font-size: 60px; margin-bottom: 16px">⛔</h1>
+      <h2 id="err-title" style="margin-bottom: 12px">Video not available</h2>
+      <p id="err-msg" style="color: var(--muted); margin-bottom: 24px"></p>
+      <a href="/" class="btn-nav">← Back to Home</a>
+    </div>
+
+    <div class="watch-info" id="watch-info" style="display: none">
+      <h1 id="info-title"></h1>
+      <div class="meta" id="info-meta"></div>
+      <p
+        id="info-overview"
+        style="color: #c5cde0; max-width: 800px; line-height: 1.7"
+      ></p>
+
+      <div class="nav-btns">
+        <a href="/" class="btn-hero btn-hero-secondary" id="back-btn">← Back</a>
+        <a
+          href="#"
+          class="btn-hero btn-hero-primary"
+          id="next-btn"
+          style="display: none"
+          >Next Episode ⏭</a
+        >
+      </div>
+    </div>
+
+    <script type="module" src="/js/api.js"></script>
+    <script type="module">
+      const { api } = window.tipiz;
+      const params = new URLSearchParams(window.location.search);
+      const type = params.get("type"); // 'movie' හෝ 'episode'
+      const id = params.get("id");
+
+      const video = document.getElementById("video");
+      const playerWrap = document.getElementById("player-wrap");
+      const spinner = document.getElementById("spinner");
+      const resumeBanner = document.getElementById("resume-banner");
+      const resumeTimeEl = document.getElementById("resume-time");
+      const btnPlay = document.getElementById("btn-play");
+      const btnMute = document.getElementById("btn-mute");
+      const btnFullscreen = document.getElementById("btn-fullscreen");
+      const volumeSlider = document.getElementById("volume");
+      const timeDisplay = document.getElementById("time-display");
+      const seekBar = document.getElementById("seek-bar");
+      const seekFill = document.getElementById("seek-fill");
+      const speedSelect = document.getElementById("speed");
+      const subtitleSelect = document.getElementById("subtitle-select");
+
+      let hls = null;
+      let resumePosition = 0;
+      let saveInterval = null;
+      let currentData = null;
+
+      function formatTime(sec) {
+        if (!sec || isNaN(sec)) return "0:00";
+        sec = Math.floor(sec);
+        const h = Math.floor(sec / 3600);
+        const m = Math.floor((sec % 3600) / 60);
+        const s = sec % 60;
+        if (h > 0)
+          return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+        return `${m}:${String(s).padStart(2, "0")}`;
+      }
+
+      function showError(title, msg) {
+        document.getElementById("player-wrap").style.display = "none";
+        document.getElementById("error-page").style.display = "block";
+        document.getElementById("err-title").textContent = title;
+        document.getElementById("err-msg").textContent = msg;
+      }
+
+      // ── Load video data ──────────────────
+      async function load() {
+        if (!type || !id) {
+          showError("Invalid URL", "Missing type or id parameter");
+          return;
+        }
+
+        try {
+          const data = await api.get(`/api/watch/${type}/${id}`);
+          currentData = data;
+
+          // Update page info
+          document.title = `${data.media.title || data.media.name} — TIPIZ`;
+          document.getElementById("watch-info").style.display = "block";
+          document.getElementById("info-title").textContent =
+            data.media.title || data.media.name;
+
+          if (type === "episode") {
+            document.getElementById("info-meta").textContent =
+              `Episode ${data.media.episode_number}`;
+            document.getElementById("back-btn").href =
+              `/tv.html?id=${data.media.series_id}`;
+          } else {
+            document.getElementById("back-btn").href =
+              `/movie.html?id=${data.media.id}`;
+          }
+
+          if (data.media.overview) {
+            document.getElementById("info-overview").textContent =
+              data.media.overview;
+          }
+
+          // Next episode button
+          if (data.media.next_episode) {
+            const nextUrl = `/watch.html?type=episode&id=${data.media.next_episode.id}`;
+            document.getElementById("btn-next").style.display = "flex";
+            document.getElementById("next-btn").style.display = "inline-block";
+            document.getElementById("next-btn").href = nextUrl;
+            document.getElementById("btn-next").onclick = () =>
+              (window.location.href = nextUrl);
+          }
+
+          // Subtitles
+          if (data.subtitles && data.subtitles.length) {
+            data.subtitles.forEach((sub) => {
+              const opt = document.createElement("option");
+              opt.value = sub.url;
+              opt.textContent =
+                sub.label + (sub.is_default ? " (default)" : "");
+              subtitleSelect.appendChild(opt);
+            });
+          }
+
+          // Setup player
+          setupPlayer(data);
+
+          // Resume banner
+          if (
+            data.progress &&
+            data.progress.position_seconds > 30 &&
+            !data.progress.completed
+          ) {
+            resumePosition = data.progress.position_seconds;
+            resumeTimeEl.textContent = formatTime(resumePosition);
+            resumeBanner.style.display = "flex";
+          }
+
+          playerWrap.style.display = "block";
+        } catch (err) {
+          showError("Video not available", err.message);
+        }
+      }
+
+      // ── Setup player (HLS or MP4) ─────────
+      function setupPlayer(data) {
+        const url = data.video.url;
+        spinner.style.display = "block";
+
+        if (data.video.kind === "hls" && url.endsWith(".m3u8")) {
+          if (Hls.isSupported()) {
+            hls = new Hls();
+            hls.loadSource(url);
+            hls.attachMedia(video);
+            hls.on(Hls.Events.MANIFEST_PARSED, () => {
+              spinner.style.display = "none";
+            });
+            hls.on(Hls.Events.ERROR, (_, data) => {
+              if (data.fatal) {
+                spinner.style.display = "none";
+                showError("Failed to load HLS stream", data.details);
+              }
+            });
+          } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+            video.src = url;
+            spinner.style.display = "none";
+          } else {
+            showError(
+              "HLS not supported",
+              "This browser cannot play HLS streams",
+            );
+          }
+        } else {
+          // MP4
+          video.src = url;
+          video.addEventListener(
+            "loadedmetadata",
+            () => {
+              spinner.style.display = "none";
+            },
+            { once: true },
+          );
+        }
+      }
+
+      // ── Resume banner ─────────────────────
+      document.getElementById("resume-yes").onclick = () => {
+        video.currentTime = resumePosition;
+        resumeBanner.style.display = "none";
+        video.play();
+      };
+      document.getElementById("resume-no").onclick = () => {
+        resumeBanner.style.display = "none";
+        video.play();
+      };
+
+      // ── Play/Pause ────────────────────────
+      video.addEventListener("play", () => {
+        btnPlay.textContent = "⏸";
+        playerWrap.classList.remove("paused");
+        startProgressSave();
+      });
+      video.addEventListener("pause", () => {
+        btnPlay.textContent = "▶";
+        playerWrap.classList.add("paused");
+      });
+      btnPlay.onclick = () => (video.paused ? video.play() : video.pause());
+
+      // Click video to toggle
+      video.addEventListener("click", () =>
+        video.paused ? video.play() : video.pause(),
+      );
+
+      // ── Volume ────────────────────────────
+      volumeSlider.oninput = () => {
+        video.volume = volumeSlider.value;
+        btnMute.textContent = video.volume === 0 ? "🔇" : "🔊";
+      };
+      btnMute.onclick = () => {
+        video.muted = !video.muted;
+        btnMute.textContent = video.muted || video.volume === 0 ? "🔇" : "🔊";
+      };
+
+      // ── Time / Seek ───────────────────────
+      video.addEventListener("timeupdate", () => {
+        timeDisplay.textContent = `${formatTime(video.currentTime)} / ${formatTime(video.duration)}`;
+        if (video.duration) {
+          const pct = (video.currentTime / video.duration) * 100;
+          seekFill.style.width = pct + "%";
+        }
+      });
+
+      seekBar.addEventListener("click", (e) => {
+        const rect = seekBar.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const pct = x / rect.width;
+        if (video.duration) video.currentTime = pct * video.duration;
+      });
+
+      // ── Speed ─────────────────────────────
+      speedSelect.onchange = () => {
+        video.playbackRate = parseFloat(speedSelect.value);
+      };
+
+      // ── Subtitles ─────────────────────────
+      subtitleSelect.onchange = () => {
+        // පවතින text tracks ඔක්කොම අයින් කරනවා
+        [...video.querySelectorAll("track")].forEach((t) => t.remove());
+        const v = subtitleSelect.value;
+        if (v) {
+          const track = document.createElement("track");
+          track.kind = "subtitles";
+          track.label =
+            subtitleSelect.options[subtitleSelect.selectedIndex].text;
+          track.srclang = "en";
+          track.src = v;
+          track.default = true;
+          video.appendChild(track);
+        }
+      };
+
+      // ── Fullscreen ────────────────────────
+      btnFullscreen.onclick = () => {
+        if (!document.fullscreenElement) {
+          playerWrap.requestFullscreen?.();
+        } else {
+          document.exitFullscreen?.();
+        }
+      };
+
+      // ── Keyboard shortcuts ────────────────
+      document.addEventListener("keydown", (e) => {
+        if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT")
+          return;
+        if (e.code === "Space") {
+          e.preventDefault();
+          video.paused ? video.play() : video.pause();
+        }
+        if (e.code === "ArrowRight") video.currentTime += 5;
+        if (e.code === "ArrowLeft") video.currentTime -= 5;
+        if (e.key === "f") btnFullscreen.onclick();
+        if (e.key === "m") btnMute.onclick();
+      });
+
+      // ── Progress save (every 10s) ─────────
+      function startProgressSave() {
+        if (saveInterval) return;
+        saveInterval = setInterval(() => saveProgress(), 10000);
+        // Page leave වුණත් save කරන්න
+        window.addEventListener("beforeunload", saveProgress);
+      }
+
+      async function saveProgress() {
+        if (!currentData || !video.duration) return;
+        try {
+          const body = {
+            media_type: type,
+            media_id: parseInt(id, 10),
+            position_seconds: video.currentTime,
+            duration_seconds: video.duration,
+          };
+          if (type === "episode") {
+            body.series_id = currentData.media.series_id;
+            body.episode_number = currentData.media.episode_number;
+          }
+          await api.post("/api/watch/progress", body);
+        } catch {
+          // Silent fail — user maybe logged out
+        }
+      }
+
+      load();
+    </script>
+  </body>
+</html>

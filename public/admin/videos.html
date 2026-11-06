@@ -1,0 +1,370 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Video Uploads — TIPIZ Admin</title>
+    <link rel="stylesheet" href="/css/style.css" />
+    <link rel="stylesheet" href="/css/admin.css" />
+  </head>
+  <body>
+    <div class="admin-layout">
+      <aside class="admin-sidebar">
+        <div class="brand">TIPIZ</div>
+        <nav>
+          <a href="/admin/index.html">Dashboard</a>
+          <a href="/admin/movies.html">Movies</a>
+          <a href="/admin/series.html">TV Series</a>
+          <a href="/admin/videos.html" class="active">Video Uploads</a>
+          <a href="/admin/tmdb.html">TMDB Import</a>
+          <a href="/admin/settings.html">Settings</a>
+          <a href="/dashboard.html">← Back to site</a>
+          <a href="#" id="logout">Logout</a>
+        </nav>
+      </aside>
+
+      <main class="admin-main">
+        <div class="admin-header">
+          <h1>Video Uploads</h1>
+          <p>Upload MP4 files to R2 and assign them to Movies or TV Episodes</p>
+        </div>
+
+        <div class="admin-alert" id="alert"></div>
+
+        <!-- Upload Form -->
+        <div class="panel">
+          <h2>Upload New Video</h2>
+          <form id="upload-form" style="max-width: 600px">
+            <div class="form-row">
+              <label>Video Title (for reference)</label>
+              <input
+                type="text"
+                id="upload-title"
+                required
+                placeholder="E.g., The Dog Stars - 1080p"
+              />
+            </div>
+            <div class="form-row">
+              <label>Select MP4 File (Max 100MB)</label>
+              <input
+                type="file"
+                id="upload-file"
+                accept="video/mp4"
+                required
+                style="
+                  padding: 10px;
+                  background: #0a0f1c;
+                  border-radius: 8px;
+                  border: 1px solid var(--border);
+                  color: var(--text);
+                  width: 100%;
+                "
+              />
+            </div>
+            <div class="form-row" id="progress-wrap" style="display: none">
+              <div
+                style="
+                  height: 10px;
+                  background: #0a0f1c;
+                  border-radius: 5px;
+                  overflow: hidden;
+                "
+              >
+                <div
+                  id="progress-bar"
+                  style="
+                    height: 100%;
+                    width: 0%;
+                    background: var(--accent-1);
+                    transition: width 0.2s;
+                  "
+                ></div>
+              </div>
+              <div
+                id="progress-text"
+                style="font-size: 12px; color: var(--muted); margin-top: 6px"
+              >
+                0%
+              </div>
+            </div>
+            <button type="submit" class="btn-admin" id="upload-btn">
+              Upload to R2
+            </button>
+          </form>
+        </div>
+
+        <!-- Video List -->
+        <div class="panel" style="padding: 0; overflow: hidden">
+          <div
+            style="
+              padding: 20px;
+              border-bottom: 1px solid var(--border);
+              background: var(--bg-3);
+            "
+          >
+            <h2 style="margin: 0">Uploaded Videos</h2>
+          </div>
+          <div id="videos-list" style="padding: 20px">
+            <div style="text-align: center; color: var(--muted)">
+              Loading...
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <!-- Assign Modal (Hidden) -->
+    <div
+      id="assign-modal"
+      style="
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.8);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+      "
+    >
+      <div class="panel" style="max-width: 400px; width: 100%; margin: 20px">
+        <h2 style="margin-bottom: 16px">Assign Video</h2>
+        <p style="color: var(--muted); font-size: 13px; margin-bottom: 16px">
+          Video ID: <span id="modal-video-id"></span>
+        </p>
+
+        <div class="form-row">
+          <label>Target Type</label>
+          <select id="assign-type">
+            <option value="movie">Movie</option>
+            <option value="episode">TV Episode</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label>Target ID (Movie ID or Episode ID)</label>
+          <input type="number" id="assign-target-id" placeholder="E.g., 2" />
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-top: 20px">
+          <button class="btn-admin" id="btn-do-assign">Assign</button>
+          <button class="btn-admin secondary" id="btn-cancel-assign">
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="/js/api.js"></script>
+    <script type="module">
+      const { api } = window.tipiz;
+      const alertBox = document.getElementById("alert");
+      let allVideos = [];
+
+      function showAlert(msg, type = "error") {
+        alertBox.textContent = msg;
+        alertBox.className = `admin-alert show ${type}`;
+        setTimeout(() => {
+          alertBox.className = "admin-alert";
+        }, 5000);
+      }
+
+      function esc(s) {
+        return String(s || "").replace(
+          /[&<>"']/g,
+          (c) =>
+            ({
+              "&": "&amp;",
+              "<": "&lt;",
+              ">": "&gt;",
+              '"': "&quot;",
+              "'": "&#39;",
+            })[c],
+        );
+      }
+
+      // ── Load Videos ──
+      async function loadVideos() {
+        try {
+          const { results } = await api.get("/api/admin/videos");
+          allVideos = results || [];
+          renderVideos();
+        } catch (err) {
+          if (err.status === 401 || err.status === 403)
+            window.location.href = "/admin/login.html";
+          else showAlert(err.message);
+        }
+      }
+
+      function renderVideos() {
+        const wrap = document.getElementById("videos-list");
+        if (!allVideos.length) {
+          wrap.innerHTML =
+            '<div style="text-align:center; color:var(--muted); padding:20px;">No videos uploaded yet.</div>';
+          return;
+        }
+
+        wrap.innerHTML = `
+        <table style="width:100%; border-collapse:collapse;">
+          <thead>
+            <tr style="border-bottom:1px solid var(--border); text-align:left; color:var(--muted); font-size:12px;">
+              <th style="padding:10px;">ID</th>
+              <th style="padding:10px;">Title / Key</th>
+              <th style="padding:10px;">Size</th>
+              <th style="padding:10px; text-align:right;">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${allVideos
+              .map(
+                (v) => `
+              <tr style="border-bottom:1px solid var(--border);">
+                <td style="padding:12px 10px; font-size:13px;">${v.id}</td>
+                <td style="padding:12px 10px;">
+                  <div style="font-weight:600; font-size:14px;">${esc(v.title)}</div>
+                  <div style="font-size:11px; color:var(--muted); word-break:break-all;">${esc(v.r2_key)}</div>
+                </td>
+                <td style="padding:12px 10px; font-size:13px; color:var(--muted);">${v.size_human}</td>
+                <td style="padding:12px 10px; text-align:right; white-space:nowrap;">
+                  <button class="btn-admin secondary" data-action="assign" data-id="${v.id}" style="padding:6px 10px; font-size:12px;">Assign</button>
+                  <a href="${v.stream_url}" target="_blank" class="btn-admin secondary" style="padding:6px 10px; font-size:12px; text-decoration:none; display:inline-block;">Play</a>
+                  <button class="btn-admin secondary" data-action="delete" data-id="${v.id}" style="padding:6px 10px; font-size:12px; color:#fca5a5; border-color:rgba(239,68,68,0.3);">Delete</button>
+                </td>
+              </tr>
+            `,
+              )
+              .join("")}
+          </tbody>
+        </table>
+      `;
+
+        wrap.querySelectorAll("[data-action]").forEach((btn) => {
+          btn.onclick = () => handleAction(btn.dataset.action, btn.dataset.id);
+        });
+      }
+
+      // ── Upload Form ──
+      document.getElementById("upload-form").onsubmit = async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById("upload-btn");
+        const fileInput = document.getElementById("upload-file");
+        const title = document.getElementById("upload-title").value.trim();
+        const file = fileInput.files[0];
+
+        if (!file) return;
+
+        btn.disabled = true;
+        btn.textContent = "Uploading...";
+        document.getElementById("progress-wrap").style.display = "block";
+
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("title", title);
+
+        // Use XMLHttpRequest for progress bar
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", "/api/admin/upload");
+
+        const csrf = document.cookie.match(/tipiz_csrf=([^;]+)/)?.[1];
+        if (csrf)
+          xhr.setRequestHeader("X-CSRF-Token", decodeURIComponent(csrf));
+
+        xhr.upload.onprogress = (evt) => {
+          if (evt.lengthComputable) {
+            const pct = Math.round((evt.loaded / evt.total) * 100);
+            document.getElementById("progress-bar").style.width = pct + "%";
+            document.getElementById("progress-text").textContent = pct + "%";
+          }
+        };
+
+        xhr.onload = () => {
+          btn.disabled = false;
+          btn.textContent = "Upload to R2";
+
+          if (xhr.status >= 200 && xhr.status < 300) {
+            showAlert("Video uploaded successfully!", "success");
+            document.getElementById("upload-form").reset();
+            document.getElementById("progress-wrap").style.display = "none";
+            loadVideos();
+          } else {
+            try {
+              const data = JSON.parse(xhr.responseText);
+              showAlert(data.error || "Upload failed");
+            } catch {
+              showAlert("Upload failed (Server error)");
+            }
+            document.getElementById("progress-wrap").style.display = "none";
+          }
+        };
+
+        xhr.onerror = () => {
+          btn.disabled = false;
+          btn.textContent = "Upload to R2";
+          showAlert("Network error during upload");
+          document.getElementById("progress-wrap").style.display = "none";
+        };
+
+        xhr.send(formData);
+      };
+
+      // ── Modal for Assigning ──
+      let currentAssignVideoId = null;
+      const modal = document.getElementById("assign-modal");
+
+      function handleAction(action, id) {
+        if (action === "assign") {
+          currentAssignVideoId = id;
+          document.getElementById("modal-video-id").textContent = id;
+          document.getElementById("assign-target-id").value = "";
+          modal.style.display = "flex";
+        } else if (action === "delete") {
+          if (confirm("Delete this video from R2 and Database?")) {
+            api
+              .del(`/api/admin/videos/${id}`)
+              .then(() => {
+                showAlert("Video deleted", "success");
+                loadVideos();
+              })
+              .catch((err) => showAlert(err.message));
+          }
+        }
+      }
+
+      document.getElementById("btn-cancel-assign").onclick = () =>
+        (modal.style.display = "none");
+
+      document.getElementById("btn-do-assign").onclick = async () => {
+        const type = document.getElementById("assign-type").value;
+        const targetId = document.getElementById("assign-target-id").value;
+
+        if (!targetId) return showAlert("Please enter Target ID");
+
+        const btn = document.getElementById("btn-do-assign");
+        btn.disabled = true;
+        btn.textContent = "Assigning...";
+
+        try {
+          await api.post("/api/admin/assign-video", {
+            video_id: currentAssignVideoId,
+            type: type,
+            target_id: parseInt(targetId, 10),
+          });
+          showAlert("Video assigned successfully!", "success");
+          modal.style.display = "none";
+        } catch (err) {
+          showAlert(err.message);
+        } finally {
+          btn.disabled = false;
+          btn.textContent = "Assign";
+        }
+      };
+
+      // ── Logout ──
+      document.getElementById("logout").onclick = async (e) => {
+        e.preventDefault();
+        await api.logout();
+        window.location.href = "/admin/login.html";
+      };
+
+      loadVideos();
+    </script>
+  </body>
+</html>

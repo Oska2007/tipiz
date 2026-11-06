@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Create Account — TIPIZ</title>
+    <link rel="stylesheet" href="/css/style.css" />
+  </head>
+  <body>
+    <div class="auth-wrap">
+      <div class="auth-card">
+        <div class="logo">TIPIZ</div>
+        <div class="subtitle">Create your account</div>
+
+        <div class="alert" id="alert"></div>
+
+        <form id="register-form">
+          <div class="field">
+            <label for="name">Name</label>
+            <input id="name" type="text" autocomplete="name" required />
+          </div>
+          <div class="field">
+            <label for="email">Email</label>
+            <input id="email" type="email" autocomplete="email" required />
+          </div>
+          <div class="field">
+            <label for="password">Password (min 8 characters)</label>
+            <input
+              id="password"
+              type="password"
+              autocomplete="new-password"
+              minlength="8"
+              required
+            />
+          </div>
+          <button class="btn" type="submit" id="submit-btn">
+            Create Account
+          </button>
+        </form>
+
+        <div class="links">
+          Already have an account? <a href="/login.html">Sign in</a>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="/js/api.js"></script>
+    <script type="module">
+      const { api } = window.tipiz;
+      const form = document.getElementById("register-form");
+      const alertBox = document.getElementById("alert");
+      const btn = document.getElementById("submit-btn");
+
+      function showAlert(msg, type = "error") {
+        alertBox.textContent = msg;
+        alertBox.className = `alert show ${type}`;
+      }
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        alertBox.className = "alert";
+        btn.disabled = true;
+        btn.textContent = "Creating account...";
+        try {
+          await api.register(
+            document.getElementById("email").value.trim(),
+            document.getElementById("password").value,
+            document.getElementById("name").value.trim(),
+          );
+          window.location.href = "/dashboard.html";
+        } catch (err) {
+          showAlert(err.message || "Registration failed");
+          btn.disabled = false;
+          btn.textContent = "Create Account";
+        }
+      });
+    </script>
+  </body>
+</html>
