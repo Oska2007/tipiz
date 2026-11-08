@@ -53,6 +53,7 @@ const routes = [
   ['GET', '/api/tv', tv.listPublic],
   ['GET', '/api/tv/:id', tv.getPublic],
   ['GET', '/api/tv/:id/episodes', tv.listEpisodes],
+  ['GET', '/api/admin/tv/:id', tv.getAdminSeries],
   ['GET', '/api/admin/tv', tv.listAdmin],
   ['POST', '/api/tv/import', tv.importFromTMDB],
   ['POST', '/api/tv/:id/import-season', tv.importSeason],

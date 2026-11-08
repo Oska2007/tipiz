@@ -1,0 +1,414 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Manage Episodes — TIPIZ Admin</title>
+    <link rel="stylesheet" href="/css/style.css" />
+    <link rel="stylesheet" href="/css/admin.css" />
+  </head>
+  <body>
+    <div class="admin-layout">
+      <aside class="admin-sidebar">
+        <div class="brand">TIPIZ</div>
+        <nav>
+          <a href="/admin/index.html">Dashboard</a>
+          <a href="/admin/movies.html">Movies</a>
+          <a href="/admin/series.html">TV Series</a>
+          <a href="/admin/episodes.html" class="active">Manage Episodes</a>
+          <a href="/admin/videos.html">Video Uploads</a>
+          <a href="/admin/tmdb.html">TMDB Import</a>
+          <a href="/admin/settings.html">Settings</a>
+          <a href="/dashboard.html">← Back to site</a>
+          <a href="#" id="logout">Logout</a>
+        </nav>
+      </aside>
+
+      <main class="admin-main">
+        <div class="admin-header">
+          <h1>Manage Episodes</h1>
+          <p>Assign uploaded videos to TV Series episodes</p>
+        </div>
+
+        <div class="admin-alert" id="alert"></div>
+
+        <!-- Series & Season Selectors -->
+        <div class="panel">
+          <div style="display: flex; gap: 16px; flex-wrap: wrap">
+            <div
+              class="form-row"
+              style="flex: 1; min-width: 200px; margin-bottom: 0"
+            >
+              <label>Select TV Series</label>
+              <select id="series-select">
+                <option value="">-- Select a series --</option>
+              </select>
+            </div>
+            <div
+              class="form-row"
+              style="flex: 1; min-width: 200px; margin-bottom: 0"
+            >
+              <label>Select Season</label>
+              <select id="season-select" disabled>
+                <option value="">-- Select a season --</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Episodes List Container -->
+        <div
+          id="episodes-list"
+          class="panel"
+          style="padding: 0; overflow: hidden"
+        >
+          <div style="padding: 40px; text-align: center; color: var(--muted)">
+            Select a series and season to view episodes.
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <!-- Assign Video Modal -->
+    <div
+      id="assign-modal"
+      style="
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.8);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+      "
+    >
+      <div class="panel" style="max-width: 400px; width: 100%; margin: 20px">
+        <h2 style="margin-bottom: 16px">Assign Video to Episode</h2>
+        <p
+          style="color: var(--muted); font-size: 13px; margin-bottom: 16px"
+          id="modal-ep-info"
+        ></p>
+
+        <div class="form-row">
+          <label>Select Uploaded Video</label>
+          <select id="video-select">
+            <option value="">Loading videos...</option>
+          </select>
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-top: 20px">
+          <button class="btn-admin" id="btn-do-assign">Assign Video</button>
+          <button class="btn-admin secondary" id="btn-cancel-assign">
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="/js/api.js"></script>
+    <script type="module">
+      const { api } = window.tipiz;
+      const alertBox = document.getElementById("alert");
+
+      let allVideos = [];
+      let currentEpisodeId = null;
+
+      function showAlert(msg, type = "error") {
+        alertBox.textContent = msg;
+        alertBox.className = `admin-alert show ${type}`;
+        setTimeout(() => {
+          alertBox.className = "admin-alert";
+        }, 5000);
+      }
+
+      function esc(s) {
+        return String(s || "").replace(
+          /[&<>"']/g,
+          (c) =>
+            ({
+              "&": "&amp;",
+              "<": "&lt;",
+              ">": "&gt;",
+              '"': "&quot;",
+              "'": "&#39;",
+            })[c],
+        );
+      }
+
+      // ── 1. Load Series List ──
+      async function loadSeries() {
+        try {
+          const { results } = await api.get("/api/admin/tv?limit=100");
+          const select = document.getElementById("series-select");
+
+          if (!results || !results.length) {
+            select.innerHTML =
+              '<option value="">No series found. Import from TMDB first.</option>';
+            return;
+          }
+
+          select.innerHTML =
+            '<option value="">-- Select a series --</option>' +
+            results
+              .map(
+                (s) =>
+                  `<option value="${s.id}">${esc(s.name)} (${s.first_air_date ? s.first_air_date.slice(0, 4) : "N/A"})</option>`,
+              )
+              .join("");
+        } catch (err) {
+          if (err.status === 401 || err.status === 403)
+            window.location.href = "/admin/login.html";
+          else showAlert(err.message);
+        }
+      }
+
+      // ── 2. On Series Select -> Load Seasons ──
+      document
+        .getElementById("series-select")
+        .addEventListener("change", async (e) => {
+          const seriesId = e.target.value;
+          const seasonSelect = document.getElementById("season-select");
+          const listWrap = document.getElementById("episodes-list");
+
+          seasonSelect.innerHTML =
+            '<option value="">-- Select a season --</option>';
+          listWrap.innerHTML =
+            '<div style="padding:40px; text-align:center; color:var(--muted);">Select a season to view episodes.</div>';
+
+          if (!seriesId) {
+            seasonSelect.disabled = true;
+            return;
+          }
+
+          try {
+            const { series } = await api.get(`/api/admin/tv/${seriesId}`);
+            const seasons = series.seasons || [];
+
+            if (!seasons.length) {
+              seasonSelect.innerHTML =
+                '<option value="">No seasons found</option>';
+              seasonSelect.disabled = true;
+              return;
+            }
+
+            seasonSelect.disabled = false;
+            seasonSelect.innerHTML =
+              '<option value="">-- Select a season --</option>' +
+              seasons
+                .map(
+                  (s) =>
+                    `<option value="${s.season_number}">Season ${s.season_number}</option>`,
+                )
+                .join("");
+
+            // පළවෙනි සීසන් එක ඔටෝමැටික් තෝරන්න
+            if (seasons.length > 0) {
+              seasonSelect.value = seasons[0].season_number;
+              seasonSelect.dispatchEvent(new Event("change"));
+            }
+          } catch (err) {
+            showAlert(err.message);
+          }
+        });
+
+      // ── 3. On Season Select -> Load Episodes ──
+      document
+        .getElementById("season-select")
+        .addEventListener("change", async (e) => {
+          const seriesId = document.getElementById("series-select").value;
+          const seasonNum = e.target.value;
+          const listWrap = document.getElementById("episodes-list");
+
+          if (!seasonNum) {
+            listWrap.innerHTML =
+              '<div style="padding:40px; text-align:center; color:var(--muted);">Select a season to view episodes.</div>';
+            return;
+          }
+
+          listWrap.innerHTML =
+            '<div style="padding:40px; text-align:center; color:var(--muted);">Loading episodes...</div>';
+
+          try {
+            const { episodes } = await api.get(
+              `/api/tv/${seriesId}/episodes?season=${seasonNum}`,
+            );
+
+            if (!episodes || !episodes.length) {
+              listWrap.innerHTML = `
+            <div style="padding:40px; text-align:center; color:var(--muted);">
+              <p style="margin-bottom:20px;">No episodes found for this season in the database.</p>
+              <button id="btn-import-season" class="btn-admin">Download Episodes from TMDB</button>
+            </div>
+          `;
+
+              document.getElementById("btn-import-season").onclick = async (
+                e,
+              ) => {
+                const btn = e.currentTarget;
+                btn.disabled = true;
+                btn.textContent = "Importing...";
+
+                try {
+                  const res = await api.post(
+                    `/api/tv/${seriesId}/import-season`,
+                    {
+                      season_number: parseInt(seasonNum, 10),
+                    },
+                  );
+                  showAlert(
+                    `Successfully imported ${res.episodes_imported} episodes!`,
+                    "success",
+                  );
+                  document
+                    .getElementById("season-select")
+                    .dispatchEvent(new Event("change"));
+                } catch (err) {
+                  showAlert(err.message);
+                  btn.disabled = false;
+                  btn.textContent = "Download Episodes from TMDB";
+                }
+              };
+              return;
+            }
+
+            listWrap.innerHTML = `
+          <table style="width:100%; border-collapse:collapse;">
+            <thead>
+              <tr style="background:var(--bg-3); border-bottom:1px solid var(--border); text-align:left; font-size:12px; color:var(--muted);">
+                <th style="padding:12px 14px;">Ep #</th>
+                <th style="padding:12px 14px;">Title</th>
+                <th style="padding:12px 14px;">Video Status</th>
+                <th style="padding:12px 14px; text-align:right;">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${episodes
+                .map(
+                  (ep) => `
+                <tr style="border-bottom:1px solid var(--border);">
+                  <td style="padding:12px 14px; font-weight:600;">E${ep.episode_number}</td>
+                  <td style="padding:12px 14px;">
+                    <div style="font-weight:600;">${esc(ep.name || "Untitled")}</div>
+                    <div style="font-size:11px; color:var(--muted);">ID: ${ep.id}</div>
+                  </td>
+                  <td style="padding:12px 14px;">
+                    ${
+                      ep.video_id
+                        ? '<span style="color:var(--success); font-size:12px; font-weight:600;">✓ Video Assigned</span>'
+                        : '<span style="color:#fbbf24; font-size:12px; font-weight:600;">⚠ No Video</span>'
+                    }
+                  </td>
+                  <td style="padding:12px 14px; text-align:right;">
+                    <button class="btn-admin" data-ep-id="${ep.id}" data-ep-name="S${seasonNum} E${ep.episode_number}: ${esc(ep.name || "Untitled")}" style="padding:6px 12px; font-size:12px;">Assign Video</button>
+                  </td>
+                </tr>
+              `,
+                )
+                .join("")}
+            </tbody>
+          </table>
+        `;
+
+            listWrap.querySelectorAll("[data-ep-id]").forEach((btn) => {
+              btn.onclick = () =>
+                openAssignModal(btn.dataset.epId, btn.dataset.epName);
+            });
+          } catch (err) {
+            listWrap.innerHTML = `<div style="padding:40px; text-align:center; color:var(--danger);">${esc(err.message)}</div>`;
+          }
+        });
+
+      // ── 4. Modal Logic (Video Assign) ──
+      async function loadVideosForModal() {
+        const select = document.getElementById("video-select");
+        if (allVideos.length) return;
+
+        try {
+          const { results } = await api.get("/api/admin/videos");
+          allVideos = results || [];
+
+          if (!allVideos.length) {
+            select.innerHTML =
+              '<option value="">No videos uploaded yet.</option>';
+            return;
+          }
+
+          select.innerHTML =
+            '<option value="">-- Select a video --</option>' +
+            allVideos
+              .map(
+                (v) =>
+                  `<option value="${v.id}">${esc(v.title)} (${v.size_human})</option>`,
+              )
+              .join("");
+        } catch (err) {
+          select.innerHTML = '<option value="">Failed to load videos.</option>';
+        }
+      }
+
+      const modal = document.getElementById("assign-modal");
+
+      function openAssignModal(epId, epName) {
+        currentEpisodeId = epId;
+        document.getElementById("modal-ep-info").textContent = epName;
+        document.getElementById("video-select").value = "";
+        modal.style.display = "flex";
+        loadVideosForModal();
+      }
+
+      document.getElementById("btn-cancel-assign").onclick = () => {
+        modal.style.display = "none";
+        currentEpisodeId = null;
+      };
+
+      document.getElementById("btn-do-assign").onclick = async () => {
+        const videoId = document.getElementById("video-select").value;
+        if (!videoId) return showAlert("Please select a video");
+
+        const btn = document.getElementById("btn-do-assign");
+        btn.disabled = true;
+        btn.textContent = "Assigning...";
+
+        try {
+          await api.post("/api/admin/assign-video", {
+            video_id: parseInt(videoId, 10),
+            type: "episode",
+            target_id: currentEpisodeId,
+          });
+          showAlert("Video assigned successfully!", "success");
+          modal.style.display = "none";
+
+          document
+            .getElementById("season-select")
+            .dispatchEvent(new Event("change"));
+        } catch (err) {
+          showAlert(err.message);
+        } finally {
+          btn.disabled = false;
+          btn.textContent = "Assign Video";
+        }
+      };
+
+      document.getElementById("logout").addEventListener("click", async (e) => {
+        e.preventDefault();
+        await api.logout();
+        window.location.href = "/admin/login.html";
+      });
+
+      // ── Init & Auto-Select Logic ──
+      (async () => {
+        await loadSeries();
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const seriesId = urlParams.get("series");
+
+        if (seriesId) {
+          const select = document.getElementById("series-select");
+          select.value = seriesId;
+          // ඔටෝමැටික් change event එක ට්‍රිගර් කරනවා
+          select.dispatchEvent(new Event("change"));
+        }
+      })();
+    </script>
+  </body>
+</html>

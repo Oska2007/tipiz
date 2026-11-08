@@ -15,6 +15,7 @@
           <a href="/admin/index.html">Dashboard</a>
           <a href="/admin/movies.html">Movies</a>
           <a href="/admin/series.html" class="active">TV Series</a>
+          <a href="/admin/episodes.html">Manage Episodes</a>
           <a href="/admin/videos.html">Video Uploads</a>
           <a href="/admin/tmdb.html">TMDB Import</a>
           <a href="/admin/settings.html">Settings</a>
@@ -111,10 +112,6 @@
 
       async function loadSeries() {
         try {
-          // TV admin list — use public list for now since we don't have admin list; publish to see them
-          // Actually use a new endpoint: reuse /api/admin/movies? No — we need series endpoint.
-          // Simple approach: use TMDB import response when we have it; otherwise use new endpoint.
-          // For now, we need /api/admin/tv
           const { results } = await api.get("/api/admin/tv?limit=100");
           allSeries = results || [];
           document.getElementById("total-count").textContent = allSeries.length;
@@ -195,7 +192,8 @@
                   }
                 </td>
                 <td style="padding:12px 14px;text-align:right;">
-                  <div style="display:flex;gap:6px;justify-content:flex-end;">
+                  <div style="display:flex;gap:6px;justify-content:flex-end;align-items:center;">
+                    <a href="/admin/episodes.html?series=${s.id}" class="btn-admin" style="padding:6px 12px;font-size:12px;text-decoration:none;">Episodes</a>
                     ${
                       s.status === "published"
                         ? `<button class="btn-admin secondary" data-action="unpublish" data-id="${s.id}" style="padding:6px 12px;font-size:12px;">Unpublish</button>`

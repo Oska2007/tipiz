@@ -130,6 +130,7 @@
                 ${genresHtml}
                 <p class="details-overview">${esc(series.overview || "")}</p>
                 
+                <!-- Clean Action Links (Watchlist / Favorite) -->
                 <div class="hero-actions" style="display:flex; gap:20px; flex-wrap:wrap; align-items:center; margin-top: 20px;">
                   <button id="btn-watchlist" class="action-btn" data-type="tv" data-id="${series.id}">
                     <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14m-7-7h14"/></svg>
@@ -172,12 +173,48 @@
           const { episodes } = await api.get(
             `/api/tv/${seriesId}/episodes?season=${seasonNumber}`,
           );
+
           if (!episodes.length) {
             wrap.innerHTML =
               '<div style="color:var(--muted);text-align:center;padding:20px;">No episodes in this season.</div>';
             return;
           }
-          wrap.innerHTML = `<div class="episode-list">${episodes.map((ep) => `<div class="episode-item"><img class="episode-thumb" src="${esc(ep.still_url || placeholderPoster())}" alt="${esc(ep.name)}" loading="lazy" /><div class="episode-body"><div class="episode-num">S${seasonNumber} · E${ep.episode_number}</div><div class="episode-title">${esc(ep.name || "Untitled")}</div><div class="episode-overview">${esc(ep.overview || "")}</div></div></div>`).join("")}</div>`;
+
+          wrap.innerHTML = `<div class="episode-list">
+        ${episodes
+          .map((ep) => {
+            const hasVideo = !!ep.video_id;
+            const playUrl = `/watch.html?type=episode&id=${ep.id}`;
+
+            return `
+            <div class="episode-item" data-video="${hasVideo}" data-url="${playUrl}" style="${hasVideo ? "cursor:pointer;" : "opacity: 0.7;"}">
+              <div style="position:relative;">
+                <img class="episode-thumb" src="${esc(ep.still_url || placeholderPoster())}" alt="${esc(ep.name)}" loading="lazy" />
+              </div>
+              <div class="episode-body">
+                <div class="episode-num">S${seasonNumber} · E${ep.episode_number}</div>
+                <div class="episode-title">${esc(ep.name || "Untitled")}</div>
+                <div class="episode-overview">${esc(ep.overview || "")}</div>
+                ${
+                  hasVideo
+                    ? `<div style="margin-top:8px; color:var(--accent-1); font-size:12px; font-weight:600;">▶ Watch Now</div>`
+                    : `<div style="margin-top:8px; color:var(--muted); font-size:12px;">Video coming soon</div>`
+                }
+              </div>
+            </div>
+          `;
+          })
+          .join("")}
+      </div>`;
+
+          // ක්ලික් ඉවෙන්ට් එක එකතු කිරීම
+          wrap
+            .querySelectorAll('.episode-item[data-video="true"]')
+            .forEach((el) => {
+              el.addEventListener("click", () => {
+                window.location.href = el.dataset.url;
+              });
+            });
         } catch (err) {
           wrap.innerHTML = `<div style="color:var(--danger);text-align:center;padding:20px;">${esc(err.message)}</div>`;
         }

@@ -322,3 +322,19 @@ export async function listAdmin(request, env) {
     total_pages: Math.ceil((total?.c || 0) / limit),
   });
 }
+
+// GET /api/admin/tv/:id  (admin - drafts ඇතුළුව)
+export async function getAdminSeries(request, env, id) {
+  const auth = await requireAdmin(request, env);
+  if (auth.error) return auth.error;
+
+  const series = await getOne(env, 'SELECT * FROM tv_series WHERE id = ?', id);
+  if (!series) return fail('Series not found', 404);
+
+  series.seasons = await getAll(env,
+    `SELECT id, season_number, name FROM seasons WHERE series_id = ? ORDER BY season_number ASC`,
+    id
+  );
+
+  return ok({ series });
+}

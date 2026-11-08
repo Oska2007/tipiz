@@ -390,3 +390,71 @@ a:hover { text-decoration: underline; }
   /* Footer */
   .site-footer .container { grid-template-columns: 1fr; gap: 20px; }
 }
+
+/* ═══════════════════════════════════════════════
+   MOBILE EPISODE LIST FIX (Force Side-by-Side)
+   ═══════════════════════════════════════════════ */
+@media screen and (max-width: 768px) {
+  .episode-list {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important; /* ලිස්ට් එකේ එපිසෝඩ් අතර ඉඩ අඩු කළා */
+  }
+
+  .episode-item {
+    display: grid !important;
+    grid-template-columns: 110px 1fr !important; /* බලෙන්ම පින්තූරය 110px, අකුරු ඉතුරු ඉඩ */
+    gap: 12px !important;
+    padding: 10px !important;
+    align-items: center !important; /* අකුරු සහ පින්තූරය මැදට ගන්න */
+    border-radius: 8px !important;
+  }
+
+  .episode-item > div:first-child {
+    width: 110px !important; /* පින්තූරය තියෙන කොටස */
+  }
+
+  .episode-thumb {
+    width: 100% !important;
+    height: 62px !important; /* 16:9 රේෂියෝ එකට හැදුවා */
+    aspect-ratio: auto !important;
+    object-fit: cover !important;
+    border-radius: 6px !important;
+  }
+
+  /* Play අයිකන් එක පොඩි කළා */
+  .episode-item svg {
+    width: 24px !important;
+    height: 24px !important;
+  }
+
+  .episode-body {
+    padding: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+  }
+
+  .episode-num {
+    font-size: 10px !important;
+    margin-bottom: 2px !important;
+  }
+
+  .episode-title {
+    font-size: 14px !important;
+    line-height: 1.3 !important;
+    margin-bottom: 4px !important;
+  }
+
+  .episode-overview {
+    font-size: 11px !important;
+    -webkit-line-clamp: 2 !important; /* විස්තරය පේළි 2ක් විතරයි පෙන්වන්නේ */
+    margin-bottom: 6px !important;
+  }
+  
+  /* Watch Now / Coming soon අකුරු පොඩි කළා */
+  .episode-body > div:last-child {
+    font-size: 11px !important;
+    margin-top: 0 !important;
+  }
+}
