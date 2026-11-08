@@ -13,10 +13,9 @@
         <div class="brand">TIPIZ</div>
         <nav>
           <a href="/admin/index.html">Dashboard</a>
-          <a href="/admin/movies.html">Movies</a>
+          <a href="/admin/movies.html" class="active">Movies</a>
           <a href="/admin/series.html">TV Series</a>
           <a href="/admin/episodes.html">Manage Episodes</a>
-          <!-- අලුතින් දාපු එක -->
           <a href="/admin/videos.html">Video Uploads</a>
           <a href="/admin/tmdb.html">TMDB Import</a>
           <a href="/admin/settings.html">Settings</a>
@@ -83,11 +82,111 @@
       </main>
     </div>
 
+    <!-- Assign Video Modal -->
+    <div
+      id="assign-modal"
+      style="
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.85);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+      "
+    >
+      <div
+        class="panel"
+        style="
+          max-width: 500px;
+          width: 100%;
+          margin: 20px;
+          max-height: 90vh;
+          overflow-y: auto;
+        "
+      >
+        <h2 style="margin-bottom: 16px">Assign Video to Movie</h2>
+        <p
+          style="color: var(--muted); font-size: 13px; margin-bottom: 16px"
+          id="modal-movie-info"
+        ></p>
+
+        <!-- Option 1: From Database -->
+        <div class="form-row" style="margin-bottom: 16px">
+          <label>Select from Uploaded Videos (Database)</label>
+          <select id="video-select" style="width: 100%">
+            <option value="">Loading videos...</option>
+          </select>
+        </div>
+
+        <div
+          style="
+            text-align: center;
+            margin: 16px 0;
+            color: var(--muted);
+            font-size: 12px;
+            font-weight: 600;
+          "
+        >
+          - OR -
+        </div>
+
+        <!-- Option 2: Directly from R2 Bucket -->
+        <div class="form-row" style="margin-bottom: 16px">
+          <label>Select from Cloudflare R2</label>
+
+          <!-- Search Box -->
+          <input
+            type="text"
+            id="r2-search"
+            placeholder="Search files in R2..."
+            style="
+              margin-bottom: 8px;
+              width: 100%;
+              padding: 10px;
+              border-radius: 8px;
+              background: #0a0f1c;
+              border: 1px solid var(--border);
+              color: var(--text);
+            "
+          />
+
+          <!-- R2 File List Container -->
+          <div
+            id="r2-file-list"
+            style="
+              max-height: 200px;
+              overflow-y: auto;
+              border: 1px solid var(--border);
+              border-radius: 8px;
+              background: #0a0f1c;
+              padding: 8px;
+            "
+          >
+            <div style="color: var(--muted); text-align: center; padding: 10px">
+              Loading R2 files...
+            </div>
+          </div>
+          <input type="hidden" id="r2-selected-key" value="" />
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-top: 24px">
+          <button class="btn-admin" id="btn-do-assign">Assign Video</button>
+          <button class="btn-admin secondary" id="btn-cancel-assign">
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+
     <script type="module" src="/js/api.js"></script>
     <script type="module">
       const { api } = window.tipiz;
       const alertBox = document.getElementById("alert");
       let allMovies = [];
+      let allR2Files = [];
+      let currentMovieId = null;
+      let selectedR2Key = "";
 
       function showAlert(msg, type = "error") {
         alertBox.textContent = msg;
@@ -118,11 +217,9 @@
           document.getElementById("total-count").textContent = allMovies.length;
           renderList();
         } catch (err) {
-          if (err.status === 401 || err.status === 403) {
+          if (err.status === 401 || err.status === 403)
             window.location.href = "/admin/login.html";
-          } else {
-            showAlert(err.message);
-          }
+          else showAlert(err.message);
         }
       }
 
@@ -143,13 +240,7 @@
           filtered = filtered.filter((m) => m.status === statusFilter);
 
         if (!filtered.length) {
-          wrap.innerHTML = `
-          <div style="padding:60px 20px;text-align:center;color:var(--muted);">
-            <div style="font-size:36px;margin-bottom:12px;">🎬</div>
-            <h3 style="color:var(--text);margin-bottom:8px;">No movies</h3>
-            <p>Import movies from TMDB first.</p>
-            <a class="btn-admin" href="/admin/tmdb.html" style="margin-top:20px;display:inline-block;">Import from TMDB</a>
-          </div>`;
+          wrap.innerHTML = `<div style="padding:60px 20px;text-align:center;color:var(--muted);"><div style="font-size:36px;margin-bottom:12px;">🎬</div><h3 style="color:var(--text);margin-bottom:8px;">No movies</h3><p>Import movies from TMDB first.</p></div>`;
           return;
         }
 
@@ -188,7 +279,8 @@
                   }
                 </td>
                 <td style="padding:12px 14px;text-align:right;">
-                  <div style="display:flex;gap:6px;justify-content:flex-end;">
+                  <div style="display:flex;gap:6px;justify-content:flex-end;align-items:center;">
+                    <button class="btn-admin" data-action="assign" data-id="${m.id}" data-title="${esc(m.title)}" style="padding:6px 12px;font-size:12px;">Assign Video</button>
                     ${
                       m.status === "published"
                         ? `<button class="btn-admin secondary" data-action="unpublish" data-id="${m.id}" style="padding:6px 12px;font-size:12px;">Unpublish</button>`
@@ -206,34 +298,29 @@
       `;
 
         wrap.querySelectorAll("[data-action]").forEach((btn) => {
-          btn.addEventListener("click", () =>
-            handleAction(btn.dataset.action, btn.dataset.id, btn),
-          );
+          btn.addEventListener("click", () => {
+            if (btn.dataset.action === "assign")
+              openAssignModal(btn.dataset.id, btn.dataset.title);
+            else handleAction(btn.dataset.action, btn.dataset.id, btn);
+          });
         });
       }
 
       async function handleAction(action, id, btn) {
-        if (action === "delete") {
-          if (!confirm("Delete this movie? This cannot be undone.")) return;
-        }
-
+        if (action === "delete" && !confirm("Delete this movie?")) return;
         btn.disabled = true;
         const originalText = btn.textContent;
         btn.textContent = "...";
 
         try {
-          if (action === "publish") {
+          if (action === "publish")
             await api.patch(`/api/movies/${id}/status`, {
               status: "published",
             });
-            showAlert("Movie published", "success");
-          } else if (action === "unpublish") {
+          else if (action === "unpublish")
             await api.patch(`/api/movies/${id}/status`, { status: "draft" });
-            showAlert("Movie unpublished", "success");
-          } else if (action === "delete") {
-            await api.del(`/api/movies/${id}`);
-            showAlert("Movie deleted", "success");
-          }
+          else if (action === "delete") await api.del(`/api/movies/${id}`);
+          showAlert(`Movie ${action}ed`, "success");
           loadMovies();
         } catch (err) {
           showAlert(err.message);
@@ -241,6 +328,143 @@
           btn.textContent = originalText;
         }
       }
+
+      // ── Modal & R2 File Logic ──
+      async function loadVideosForModal() {
+        const dbSelect = document.getElementById("video-select");
+
+        try {
+          const dbRes = await api.get("/api/admin/videos");
+          const videos = dbRes.results || [];
+          dbSelect.innerHTML =
+            '<option value="">-- Select DB Video --</option>' +
+            videos
+              .map(
+                (v) =>
+                  `<option value="${v.id}">${esc(v.title)} (${v.size_human})</option>`,
+              )
+              .join("");
+
+          if (allR2Files.length === 0) {
+            const r2Res = await api.get("/api/admin/r2-files");
+            allR2Files = r2Res.files || [];
+          }
+          renderR2List();
+        } catch (err) {
+          console.error(err);
+          dbSelect.innerHTML = '<option value="">Failed to load</option>';
+          document.getElementById("r2-file-list").innerHTML =
+            '<div style="color:var(--danger); padding:10px;">Failed to load R2 files.</div>';
+        }
+      }
+
+      function renderR2List(filter = "") {
+        const listContainer = document.getElementById("r2-file-list");
+        const searchLower = filter.toLowerCase();
+
+        const filtered = allR2Files.filter((f) =>
+          f.key.toLowerCase().includes(searchLower),
+        );
+
+        if (filtered.length === 0) {
+          listContainer.innerHTML =
+            '<div style="color:var(--muted); padding:10px; text-align:center;">No files found</div>';
+          return;
+        }
+
+        // Group by folder
+        const grouped = {};
+        filtered.forEach((f) => {
+          const parts = f.key.split("/");
+          const folder = parts.length > 1 ? parts[0] + "/" : "Root";
+          if (!grouped[folder]) grouped[folder] = [];
+          grouped[folder].push(f);
+        });
+
+        let html = "";
+        for (const [folder, files] of Object.entries(grouped)) {
+          html += `<div style="font-size:11px; font-weight:700; color:var(--muted); margin:8px 0 4px 4px; text-transform:uppercase;">📁 ${folder}</div>`;
+          files.forEach((f) => {
+            const isSelected = f.key === selectedR2Key;
+            const bg = isSelected
+              ? "background: rgba(79,140,255,0.2); border-color: var(--accent-1);"
+              : "border-color: transparent;";
+            const check = isSelected ? "✓ " : "📄 ";
+            html += `
+            <div class="r2-file-item" data-key="${f.key}" style="padding: 8px 12px; border: 1px solid; border-radius: 6px; cursor: pointer; display:flex; justify-content:space-between; font-size:13px; margin-bottom:4px; ${bg}">
+              <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${check}${f.key.split("/").pop()}</span>
+              <span style="color:var(--muted); font-size:11px; margin-left:8px; flex-shrink:0;">${f.size_human}</span>
+            </div>
+          `;
+          });
+        }
+
+        listContainer.innerHTML = html;
+
+        listContainer.querySelectorAll(".r2-file-item").forEach((item) => {
+          item.onclick = () => {
+            selectedR2Key = item.dataset.key;
+            document.getElementById("r2-selected-key").value = selectedR2Key;
+            document.getElementById("video-select").value = ""; // Clear DB select
+            renderR2List(document.getElementById("r2-search").value); // Re-render to show highlight
+          };
+        });
+      }
+
+      const modal = document.getElementById("assign-modal");
+
+      function openAssignModal(movieId, movieTitle) {
+        currentMovieId = movieId;
+        selectedR2Key = "";
+        document.getElementById("modal-movie-info").textContent = movieTitle;
+        document.getElementById("video-select").value = "";
+        document.getElementById("r2-selected-key").value = "";
+        document.getElementById("r2-search").value = "";
+        modal.style.display = "flex";
+        loadVideosForModal();
+      }
+
+      document.getElementById("btn-cancel-assign").onclick = () => {
+        modal.style.display = "none";
+        currentMovieId = null;
+      };
+
+      document.getElementById("video-select").onchange = () => {
+        selectedR2Key = "";
+        document.getElementById("r2-selected-key").value = "";
+        renderR2List(document.getElementById("r2-search").value); // clear highlight
+      };
+
+      document.getElementById("r2-search").addEventListener("input", (e) => {
+        renderR2List(e.target.value);
+      });
+
+      document.getElementById("btn-do-assign").onclick = async () => {
+        const videoId = document.getElementById("video-select").value;
+        const r2Key = document.getElementById("r2-selected-key").value;
+
+        if (!videoId && !r2Key) return showAlert("Please select a video");
+
+        const btn = document.getElementById("btn-do-assign");
+        btn.disabled = true;
+        btn.textContent = "Assigning...";
+
+        try {
+          const payload = { type: "movie", target_id: currentMovieId };
+          if (videoId) payload.video_id = parseInt(videoId, 10);
+          if (r2Key) payload.r2_key = r2Key;
+
+          await api.post("/api/admin/assign-video", payload);
+          showAlert("Video assigned successfully!", "success");
+          modal.style.display = "none";
+          loadMovies();
+        } catch (err) {
+          showAlert(err.message);
+        } finally {
+          btn.disabled = false;
+          btn.textContent = "Assign Video";
+        }
+      };
 
       document
         .getElementById("filter-input")
@@ -252,17 +476,10 @@
       document
         .getElementById("publish-all-btn")
         .addEventListener("click", async (e) => {
-          if (
-            !confirm(
-              "Publish ALL draft movies? They will immediately appear on the homepage.",
-            )
-          )
-            return;
-
+          if (!confirm("Publish ALL draft movies?")) return;
           const btn = e.currentTarget;
           btn.disabled = true;
           btn.textContent = "Publishing...";
-
           try {
             const res = await api.post("/api/admin/movies/publish-drafts", {});
             showAlert(`${res.count} movie(s) published`, "success");

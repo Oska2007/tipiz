@@ -6,6 +6,7 @@
     <title>My Dashboard — TIPIZ</title>
     <link rel="stylesheet" href="/css/style.css" />
     <style>
+      /* Dashboard-specific styles */
       .dash-header {
         padding: 40px 0 20px;
       }
@@ -16,8 +17,10 @@
       }
       .dash-header p {
         color: var(--muted);
+        font-size: 14px;
       }
 
+      /* Tabs (PC View - Horizontal) */
       .dash-tabs {
         display: flex;
         gap: 8px;
@@ -25,7 +28,12 @@
         border-bottom: 1px solid var(--border);
         margin-bottom: 30px;
         padding-bottom: 0;
+        scrollbar-width: none;
       }
+      .dash-tabs::-webkit-scrollbar {
+        display: none;
+      }
+
       .dash-tab {
         padding: 12px 20px;
         background: transparent;
@@ -36,6 +44,7 @@
         font-weight: 600;
         cursor: pointer;
         white-space: nowrap;
+        flex-shrink: 0;
       }
       .dash-tab:hover {
         color: var(--text);
@@ -63,6 +72,7 @@
         }
       }
 
+      /* History Cards */
       .history-card {
         display: flex;
         gap: 16px;
@@ -105,6 +115,7 @@
         background: var(--accent-1);
       }
 
+      /* Profile Card */
       .profile-card {
         background: var(--bg-2);
         border: 1px solid var(--border);
@@ -130,13 +141,84 @@
         color: var(--muted);
       }
 
-      @media (max-width: 600px) {
+      /* ═══════════════════════════════════════════════
+       MOBILE VIEW FIXES (Vertical Tabs)
+       ═══════════════════════════════════════════════ */
+      @media (max-width: 768px) {
+        .dash-header {
+          padding: 20px 0 10px;
+        }
+        .dash-header h1 {
+          font-size: 24px;
+        }
+        .dash-header p {
+          font-size: 13px;
+          line-height: 1.5;
+        }
+
+        /* Tabs ටික පහළට එකින් එක එන විදිහට හදමු */
+        .dash-tabs {
+          flex-direction: column; /* මේක තමයි පහළට එකින් එක එන්න හදන්නේ */
+          gap: 6px;
+          border-bottom: none;
+          margin-bottom: 20px;
+          padding-bottom: 0;
+        }
+
+        .dash-tab {
+          width: 100%;
+          text-align: left;
+          padding: 14px 16px;
+          background: var(--bg-2); /* ලස්සනට පසුබිමක් දෙමු */
+          border-radius: 10px;
+          border: 1px solid var(--border);
+          border-bottom: none;
+        }
+
+        /* Active වුණාම වම් පැත්තෙන් ඉරක් සහ පාට වෙනස් වීමක් */
+        .dash-tab.active {
+          color: var(--accent-1);
+          border-left: 4px solid var(--accent-1);
+          background: rgba(79, 140, 255, 0.1);
+          border-color: rgba(79, 140, 255, 0.3);
+          border-left-color: var(--accent-1);
+        }
+
         .history-card {
           flex-direction: column;
           align-items: flex-start;
+          padding: 15px;
         }
         .history-thumb {
           width: 100%;
+          margin-bottom: 8px;
+        }
+        .history-info h3 {
+          font-size: 18px;
+        }
+
+        .profile-card {
+          padding: 16px;
+        }
+        .profile-card .row {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 4px;
+        }
+        .profile-card .row span:last-child {
+          font-weight: 600;
+          color: var(--text);
+        }
+        /* Empty State එක මැදට ගන්න (Grid එක ඇතුළේ) */
+        .empty-state {
+          grid-column: 1 / -1 !important; /* මේකෙන් තමයි හැම තීරුවක්ම පුරාම යන්නේ */
+          width: 100%;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          text-align: center;
+          padding: 40px 20px;
         }
       }
     </style>

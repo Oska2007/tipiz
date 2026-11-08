@@ -53,8 +53,8 @@ const routes = [
   ['GET', '/api/tv', tv.listPublic],
   ['GET', '/api/tv/:id', tv.getPublic],
   ['GET', '/api/tv/:id/episodes', tv.listEpisodes],
-  ['GET', '/api/admin/tv/:id', tv.getAdminSeries],
   ['GET', '/api/admin/tv', tv.listAdmin],
+  ['GET', '/api/admin/tv/:id', tv.getAdminSeries],
   ['POST', '/api/tv/import', tv.importFromTMDB],
   ['POST', '/api/tv/:id/import-season', tv.importSeason],
   ['PATCH', '/api/tv/:id/status', tv.setStatus],
@@ -81,6 +81,7 @@ const routes = [
   // 10. Admin Uploads
   ['POST', '/api/admin/upload', upload.uploadVideo],
   ['GET', '/api/admin/videos', upload.listVideos],
+  ['GET', '/api/admin/r2-files', upload.listR2Files],
   ['POST', '/api/admin/assign-video', upload.assignVideo],
   ['DELETE', '/api/admin/videos/:id', upload.deleteVideo],
 ];
@@ -106,10 +107,8 @@ function matchRoute(pattern, path) {
 // ── Security Headers Wrapper ────────────────────
 export default {
   async fetch(request, env, ctx) {
-    // 1. Request එක process කරන්න
     const response = await handleRequest(request, env, ctx);
     
-    // 2. එන Response එකට Security Headers දාන්න (Streaming නවත්තන්නේ නැතුව)
     const newHeaders = new Headers(response.headers);
     
     newHeaders.set('X-Content-Type-Options', 'nosniff');
@@ -178,7 +177,6 @@ async function handleRequest(request, env, ctx) {
       if (!params) continue;
 
       try {
-        // params.id එක 3 වෙනි argument එක විදිහට handler එකට යවනවා
         return await handler(request, env, params.id, ctx);
       } catch (err) {
         console.error('API error:', err);

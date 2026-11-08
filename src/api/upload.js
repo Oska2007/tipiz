@@ -59,7 +59,7 @@ export async function listVideos(request, env) {
   });
 }
 
-// ── 3. Assign Video to Movie or Episode ──
+// ── 3. Assign Video to Movie or Episode (Updated) ──
 export async function assignVideo(request, env) {
   const auth = await requireAdmin(request, env);
   if (auth.error) return auth.error;
@@ -69,17 +69,32 @@ export async function assignVideo(request, env) {
   let body;
   try { body = await request.json(); } catch { return fail('Invalid JSON'); }
 
-  const { video_id, type, target_id } = body;
-  if (!video_id || !type || !target_id) return fail('Missing fields');
+  const { video_id, r2_key, type, target_id } = body;
+  if ((!video_id && !r2_key) || !type || !target_id) return fail('Missing fields');
 
-  const video = await getOne(env, 'SELECT id FROM videos WHERE id = ?', video_id);
-  if (!video) return fail('Video not found');
+  let targetVideoId = video_id;
+
+  // r2_key එකක් එවලා තියෙනවා නම්, ඒක Database එකේ තියෙනවද බලලා නැත්නම් අලුතින් හදනවා
+  if (!targetVideoId && r2_key) {
+    let video = await getOne(env, 'SELECT id FROM videos WHERE r2_key = ?', r2_key);
+    if (!video) {
+      const title = r2_key.split('/').pop() || 'Cloudflare R2 Video';
+      targetVideoId = await insert(env,
+        `INSERT INTO videos (title, kind, r2_key) VALUES (?, 'mp4', ?)`,
+        title, r2_key
+      );
+    } else {
+      targetVideoId = video.id;
+    }
+  }
+
+  if (!targetVideoId) return fail('Video not found');
 
   if (type === 'movie') {
     await run(env, 'UPDATE movies SET video_id = ?, updated_at = ? WHERE id = ?',
-      video_id, new Date().toISOString(), target_id);
+      targetVideoId, new Date().toISOString(), target_id);
   } else if (type === 'episode') {
-    await run(env, 'UPDATE episodes SET video_id = ? WHERE id = ?', video_id, target_id);
+    await run(env, 'UPDATE episodes SET video_id = ? WHERE id = ?', targetVideoId, target_id);
   } else {
     return fail('Invalid type');
   }
@@ -103,4 +118,23 @@ export async function deleteVideo(request, env, id) {
   await run(env, 'DELETE FROM videos WHERE id = ?', id);
 
   return ok({ message: 'Video deleted' });
+}
+
+// ── 5. List All Files in R2 ──
+export async function listR2Files(request, env) {
+  const auth = await requireAdmin(request, env);
+  if (auth.error) return auth.error;
+
+  try {
+    const listed = await env.R2.list({ limit: 100 });
+    return ok({
+      files: listed.objects.map(obj => ({
+        key: obj.key,
+        size_human: (obj.size / (1024 * 1024)).toFixed(1) + ' MB',
+        uploaded: obj.uploaded
+      }))
+    });
+  } catch (err) {
+    return fail('Failed to list R2 files: ' + err.message, 500);
+  }
 }

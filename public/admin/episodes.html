@@ -32,7 +32,6 @@
 
         <div class="admin-alert" id="alert"></div>
 
-        <!-- Series & Season Selectors -->
         <div class="panel">
           <div style="display: flex; gap: 16px; flex-wrap: wrap">
             <div
@@ -56,7 +55,6 @@
           </div>
         </div>
 
-        <!-- Episodes List Container -->
         <div
           id="episodes-list"
           class="panel"
@@ -76,27 +74,88 @@
         display: none;
         position: fixed;
         inset: 0;
-        background: rgba(0, 0, 0, 0.8);
+        background: rgba(0, 0, 0, 0.85);
         z-index: 1000;
         align-items: center;
         justify-content: center;
       "
     >
-      <div class="panel" style="max-width: 400px; width: 100%; margin: 20px">
+      <div
+        class="panel"
+        style="
+          max-width: 500px;
+          width: 100%;
+          margin: 20px;
+          max-height: 90vh;
+          overflow-y: auto;
+        "
+      >
         <h2 style="margin-bottom: 16px">Assign Video to Episode</h2>
         <p
           style="color: var(--muted); font-size: 13px; margin-bottom: 16px"
           id="modal-ep-info"
         ></p>
 
-        <div class="form-row">
-          <label>Select Uploaded Video</label>
-          <select id="video-select">
+        <!-- Option 1: From Database -->
+        <div class="form-row" style="margin-bottom: 16px">
+          <label>Select from Uploaded Videos (Database)</label>
+          <select id="video-select" style="width: 100%">
             <option value="">Loading videos...</option>
           </select>
         </div>
 
-        <div style="display: flex; gap: 10px; margin-top: 20px">
+        <div
+          style="
+            text-align: center;
+            margin: 16px 0;
+            color: var(--muted);
+            font-size: 12px;
+            font-weight: 600;
+          "
+        >
+          - OR -
+        </div>
+
+        <!-- Option 2: Directly from R2 Bucket -->
+        <div class="form-row" style="margin-bottom: 16px">
+          <label>Select from Cloudflare R2</label>
+
+          <!-- Search Box -->
+          <input
+            type="text"
+            id="r2-search"
+            placeholder="Search files in R2..."
+            style="
+              margin-bottom: 8px;
+              width: 100%;
+              padding: 10px;
+              border-radius: 8px;
+              background: #0a0f1c;
+              border: 1px solid var(--border);
+              color: var(--text);
+            "
+          />
+
+          <!-- R2 File List Container -->
+          <div
+            id="r2-file-list"
+            style="
+              max-height: 200px;
+              overflow-y: auto;
+              border: 1px solid var(--border);
+              border-radius: 8px;
+              background: #0a0f1c;
+              padding: 8px;
+            "
+          >
+            <div style="color: var(--muted); text-align: center; padding: 10px">
+              Loading R2 files...
+            </div>
+          </div>
+          <input type="hidden" id="r2-selected-key" value="" />
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-top: 24px">
           <button class="btn-admin" id="btn-do-assign">Assign Video</button>
           <button class="btn-admin secondary" id="btn-cancel-assign">
             Cancel
@@ -110,8 +169,9 @@
       const { api } = window.tipiz;
       const alertBox = document.getElementById("alert");
 
-      let allVideos = [];
+      let allR2Files = [];
       let currentEpisodeId = null;
+      let selectedR2Key = "";
 
       function showAlert(msg, type = "error") {
         alertBox.textContent = msg;
@@ -142,8 +202,7 @@
           const select = document.getElementById("series-select");
 
           if (!results || !results.length) {
-            select.innerHTML =
-              '<option value="">No series found. Import from TMDB first.</option>';
+            select.innerHTML = '<option value="">No series found.</option>';
             return;
           }
 
@@ -201,7 +260,6 @@
                 )
                 .join("");
 
-            // පළවෙනි සීසන් එක ඔටෝමැටික් තෝරන්න
             if (seasons.length > 0) {
               seasonSelect.value = seasons[0].season_number;
               seasonSelect.dispatchEvent(new Event("change"));
@@ -236,7 +294,7 @@
             if (!episodes || !episodes.length) {
               listWrap.innerHTML = `
             <div style="padding:40px; text-align:center; color:var(--muted);">
-              <p style="margin-bottom:20px;">No episodes found for this season in the database.</p>
+              <p style="margin-bottom:20px;">No episodes found for this season.</p>
               <button id="btn-import-season" class="btn-admin">Download Episodes from TMDB</button>
             </div>
           `;
@@ -318,40 +376,99 @@
           }
         });
 
-      // ── 4. Modal Logic (Video Assign) ──
+      // ── 4. Modal & R2 File Logic ──
       async function loadVideosForModal() {
-        const select = document.getElementById("video-select");
-        if (allVideos.length) return;
+        const dbSelect = document.getElementById("video-select");
 
         try {
-          const { results } = await api.get("/api/admin/videos");
-          allVideos = results || [];
-
-          if (!allVideos.length) {
-            select.innerHTML =
-              '<option value="">No videos uploaded yet.</option>';
-            return;
-          }
-
-          select.innerHTML =
-            '<option value="">-- Select a video --</option>' +
-            allVideos
+          // 1. Load D1 Database Videos
+          const dbRes = await api.get("/api/admin/videos");
+          const videos = dbRes.results || [];
+          dbSelect.innerHTML =
+            '<option value="">-- Select DB Video --</option>' +
+            videos
               .map(
                 (v) =>
                   `<option value="${v.id}">${esc(v.title)} (${v.size_human})</option>`,
               )
               .join("");
+
+          // 2. Load R2 Files (if not already loaded)
+          if (allR2Files.length === 0) {
+            const r2Res = await api.get("/api/admin/r2-files");
+            allR2Files = r2Res.files || [];
+          }
+          renderR2List();
         } catch (err) {
-          select.innerHTML = '<option value="">Failed to load videos.</option>';
+          console.error(err);
+          dbSelect.innerHTML = '<option value="">Failed to load</option>';
+          document.getElementById("r2-file-list").innerHTML =
+            '<div style="color:var(--danger); padding:10px;">Failed to load R2 files.</div>';
         }
+      }
+
+      function renderR2List(filter = "") {
+        const listContainer = document.getElementById("r2-file-list");
+        const searchLower = filter.toLowerCase();
+
+        const filtered = allR2Files.filter((f) =>
+          f.key.toLowerCase().includes(searchLower),
+        );
+
+        if (filtered.length === 0) {
+          listContainer.innerHTML =
+            '<div style="color:var(--muted); padding:10px; text-align:center;">No files found</div>';
+          return;
+        }
+
+        // Group files by folder
+        const grouped = {};
+        filtered.forEach((f) => {
+          const parts = f.key.split("/");
+          const folder = parts.length > 1 ? parts[0] + "/" : "Root";
+          if (!grouped[folder]) grouped[folder] = [];
+          grouped[folder].push(f);
+        });
+
+        let html = "";
+        for (const [folder, files] of Object.entries(grouped)) {
+          html += `<div style="font-size:11px; font-weight:700; color:var(--muted); margin:8px 0 4px 4px; text-transform:uppercase;">📁 ${folder}</div>`;
+          files.forEach((f) => {
+            const isSelected = f.key === selectedR2Key;
+            const bg = isSelected
+              ? "background: rgba(79,140,255,0.2); border-color: var(--accent-1);"
+              : "border-color: transparent;";
+            const check = isSelected ? "✓ " : "📄 ";
+            html += `
+            <div class="r2-file-item" data-key="${f.key}" style="padding: 8px 12px; border: 1px solid; border-radius: 6px; cursor: pointer; display:flex; justify-content:space-between; font-size:13px; margin-bottom:4px; ${bg}">
+              <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${check}${f.key.split("/").pop()}</span>
+              <span style="color:var(--muted); font-size:11px; margin-left:8px; flex-shrink:0;">${f.size_human}</span>
+            </div>
+          `;
+          });
+        }
+
+        listContainer.innerHTML = html;
+
+        listContainer.querySelectorAll(".r2-file-item").forEach((item) => {
+          item.onclick = () => {
+            selectedR2Key = item.dataset.key;
+            document.getElementById("r2-selected-key").value = selectedR2Key;
+            document.getElementById("video-select").value = ""; // Clear DB dropdown selection
+            renderR2List(document.getElementById("r2-search").value); // Re-render to highlight selection
+          };
+        });
       }
 
       const modal = document.getElementById("assign-modal");
 
       function openAssignModal(epId, epName) {
         currentEpisodeId = epId;
+        selectedR2Key = "";
         document.getElementById("modal-ep-info").textContent = epName;
         document.getElementById("video-select").value = "";
+        document.getElementById("r2-selected-key").value = "";
+        document.getElementById("r2-search").value = "";
         modal.style.display = "flex";
         loadVideosForModal();
       }
@@ -361,20 +478,32 @@
         currentEpisodeId = null;
       };
 
+      document.getElementById("video-select").onchange = () => {
+        selectedR2Key = "";
+        document.getElementById("r2-selected-key").value = "";
+        renderR2List(document.getElementById("r2-search").value); // Clear R2 highlight
+      };
+
+      document.getElementById("r2-search").addEventListener("input", (e) => {
+        renderR2List(e.target.value);
+      });
+
       document.getElementById("btn-do-assign").onclick = async () => {
         const videoId = document.getElementById("video-select").value;
-        if (!videoId) return showAlert("Please select a video");
+        const r2Key = document.getElementById("r2-selected-key").value;
+
+        if (!videoId && !r2Key) return showAlert("Please select a video");
 
         const btn = document.getElementById("btn-do-assign");
         btn.disabled = true;
         btn.textContent = "Assigning...";
 
         try {
-          await api.post("/api/admin/assign-video", {
-            video_id: parseInt(videoId, 10),
-            type: "episode",
-            target_id: currentEpisodeId,
-          });
+          const payload = { type: "episode", target_id: currentEpisodeId };
+          if (videoId) payload.video_id = parseInt(videoId, 10);
+          if (r2Key) payload.r2_key = r2Key;
+
+          await api.post("/api/admin/assign-video", payload);
           showAlert("Video assigned successfully!", "success");
           modal.style.display = "none";
 
@@ -395,17 +524,14 @@
         window.location.href = "/admin/login.html";
       });
 
-      // ── Init & Auto-Select Logic ──
+      // Init & Auto-select from URL
       (async () => {
         await loadSeries();
-
         const urlParams = new URLSearchParams(window.location.search);
         const seriesId = urlParams.get("series");
-
         if (seriesId) {
           const select = document.getElementById("series-select");
           select.value = seriesId;
-          // ඔටෝමැටික් change event එක ට්‍රිගර් කරනවා
           select.dispatchEvent(new Event("change"));
         }
       })();

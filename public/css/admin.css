@@ -259,3 +259,131 @@
   .admin-sidebar nav a { padding: 10px 14px; }
   .admin-main { padding: 24px 16px; }
 }
+
+/* ═══════════════════════════════════════════════
+   MOBILE RESPONSIVE ADMIN PANEL
+   ═══════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  /* 1. Layout එක එක පේළියකට (Column) හරවන්න */
+  .admin-layout {
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  /* 2. Sidebar එක උඩින් තියෙන Menu එකක් කරන්න */
+  .admin-sidebar {
+    position: relative !important;
+    width: 100% !important;
+    height: auto !important;
+    border-right: none !important;
+    border-bottom: 1px solid var(--border) !important;
+    padding: 10px 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  .admin-sidebar .brand {
+    padding: 10px 20px !important;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 10px;
+  }
+
+  /* Menu ලින්ක්ස් හරස් අතට ලිස්සන්න හදන්න */
+  .admin-sidebar nav {
+    display: flex !important;
+    flex-direction: row !important;
+    overflow-x: auto !important; /* හරස් අතට ලිස්සන්න */
+    padding: 0 10px 10px 10px !important;
+    gap: 8px !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Scrollbar එක හංගන්න */
+  .admin-sidebar nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .admin-sidebar nav a {
+    padding: 8px 16px !important;
+    white-space: nowrap !important;
+    border-radius: 8px !important;
+    background: var(--bg-2);
+    font-size: 13px !important;
+    border-left: none !important; /* පරණ වම් පැත්තේ ඉර අයින් කරන්න */
+  }
+
+  /* Active වෙච්ච එක පාට කරන්න */
+  .admin-sidebar nav a.active {
+    background: rgba(79, 140, 255, 0.15) !important;
+    color: var(--accent-1) !important;
+    font-weight: 600;
+  }
+
+  /* 3. Main Content එකේ Padding එක අඩු කරන්න */
+  .admin-main {
+    padding: 20px 15px !important;
+  }
+
+  .admin-header h1 {
+    font-size: 24px !important;
+  }
+
+  /* 4. Tables (Movies, Series) හරස් අතට ලිස්සන්න හදන්න */
+  .panel {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Table එක කුඩා වෙන්න දෙන්නේ නෑ, හරස් අතට ලිස්සනවා */
+  .panel table {
+    min-width: 650px !important; 
+  }
+
+  /* 5. Buttons සහ Forms හැඩගස්වන්න */
+  .search-bar {
+    flex-direction: column !important;
+    gap: 10px !important;
+  }
+
+  .search-bar input,
+  .search-bar select,
+  .search-bar button,
+  .btn-admin {
+    width: 100% !important;
+    display: block !important;
+    margin-bottom: 5px;
+  }
+
+  /* Filter/Search බටන්ස් වගේ පොඩි ඒවා */
+  .search-bar button {
+    margin-bottom: 0 !important;
+  }
+
+  .panel > div[style*="display:flex"] {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+  }
+
+  /* 6. Dashboard Stats කාඩ්පත් (2 columns) */
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+  }
+  
+  .stat-card {
+    padding: 15px !important;
+  }
+  
+  .stat-card .value {
+    font-size: 24px !important;
+  }
+
+  /* 7. Modals (Assign Video) */
+  #assign-modal .panel {
+    width: 95% !important;
+    margin: 10px !important;
+    max-height: 90vh !important;
+  }
+}
