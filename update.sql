@@ -1,1 +1,0 @@
-UPDATE movies SET video_id = 1;
