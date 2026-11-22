@@ -13,34 +13,49 @@
       <div class="container">
         <a href="/" class="site-logo">TIPIZ</a>
         <nav class="site-nav">
-          <a href="/" class="active">Home</a>
           <a href="/browse.html?type=movie">Movies</a>
           <a href="/browse.html?type=tv">TV Series</a>
         </nav>
 
-        <!-- Filter Icon (මෙතන තමයි වෙනස් වුණේ) -->
-        <a href="/search.html" class="nav-filter-icon" title="Search & Filters">
-          <svg
-            width="20"
-            height="20"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            viewBox="0 0 24 24"
-            stroke-linecap="round"
-            stroke-linejoin="round"
+        <div class="nav-tools">
+          <button
+            type="button"
+            class="nav-search-toggle"
+            id="nav-search-toggle"
+            aria-label="Search by title"
+            aria-expanded="false"
+            aria-controls="nav-search-form"
+            title="Search"
           >
-            <line x1="4" y1="21" x2="4" y2="14"></line>
-            <line x1="4" y1="10" x2="4" y2="3"></line>
-            <line x1="12" y1="21" x2="12" y2="12"></line>
-            <line x1="12" y1="8" x2="12" y2="3"></line>
-            <line x1="20" y1="21" x2="20" y2="16"></line>
-            <line x1="20" y1="12" x2="20" y2="3"></line>
-            <line x1="1" y1="14" x2="7" y2="14"></line>
-            <line x1="9" y1="8" x2="15" y2="8"></line>
-            <line x1="17" y1="16" x2="23" y2="16"></line>
-          </svg>
-        </a>
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="7"></circle>
+              <path d="m20 20-4-4"></path>
+            </svg>
+          </button>
+          <a href="/search.html" class="nav-filter-toggle" aria-label="Filters" title="Filters">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="4" y1="6" x2="20" y2="6"></line>
+              <circle cx="9" cy="6" r="2"></circle>
+              <line x1="4" y1="12" x2="20" y2="12"></line>
+              <circle cx="15" cy="12" r="2"></circle>
+              <line x1="4" y1="18" x2="20" y2="18"></line>
+              <circle cx="11" cy="18" r="2"></circle>
+            </svg>
+          </a>
+        </div>
+        <form id="nav-search-form" class="nav-search-form" role="search" hidden>
+          <div class="nav-search-input-row">
+            <input type="search" name="q" placeholder="Search movies & TV..." aria-label="Search by title" autocomplete="off" />
+            <button type="submit" aria-label="Search" title="Search">
+              <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="11" cy="11" r="7.5"></circle>
+                <path d="m16.5 16.5 4 4"></path>
+              </svg>
+              <span>Search</span>
+            </button>
+          </div>
+          <a class="nav-search-advanced" href="/search.html">Advanced filters</a>
+        </form>
 
         <div class="nav-auth" id="nav-auth">
           <a href="/register.html" class="btn-nav">Sign up</a>
@@ -84,7 +99,7 @@
 
     <!-- ═══════════ FOOTER ═══════════ -->
     <footer class="site-footer">
-      <div class="container">
+      <div class="container footer-main">
         <div>
           <a
             href="/"
@@ -114,6 +129,30 @@
           <h4>Account</h4>
           <a href="/login.html">Sign in</a>
           <a href="/register.html">Create account</a>
+        </div>
+        <div>
+          <h4>Join Us</h4>
+          <a
+            href="https://t.me/moviezonecm"
+            target="_blank"
+            rel="noopener noreferrer"
+            >Telegram Channel</a
+          >
+          <a
+            href="https://whatsapp.com/channel/0029VbB6wmDGzzKWwSA0Wi0R"
+            target="_blank"
+            rel="noopener noreferrer"
+            >WhatsApp Channel</a
+          >
+        </div>
+        <div>
+          <h4>Contact Us</h4>
+          <a
+            href="https://t.me/Chalo_222"
+            target="_blank"
+            rel="noopener noreferrer"
+            >Telegram @Chalo_222</a
+          >
         </div>
       </div>
       <div class="container">
@@ -185,8 +224,8 @@
           }
 
           // ── 2. පහළ තියෙන Rows (කාඩ්පත් 6 බැගින්) ──
-          const trending6 = (data.trending || []).slice(0, 6);
-          const movies6 = (data.popular || []).slice(0, 6);
+          const trending6 = (data.popular || []).slice(0, 6);
+          const movies6 = (data.trending || []).slice(0, 6);
           const series6 = (data.popular_series || []).slice(0, 6);
 
           renderRow(document.getElementById("r-trending"), trending6);

@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>404 — TIPIZ</title>
+    <link rel="stylesheet" href="/css/style.css" />
     <style>
       * {
         box-sizing: border-box;
@@ -12,13 +13,22 @@
       }
       body {
         min-height: 100vh;
-        display: grid;
-        place-items: center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: space-between;
         background: #080b14;
         color: #e8ecf5;
         font-family: system-ui, sans-serif;
         text-align: center;
         padding: 24px;
+      }
+      body > div {
+        margin: auto 0;
+      }
+      .site-footer {
+        width: 100%;
+        margin-top: 0;
       }
       h1 {
         font-size: 120px;
@@ -32,7 +42,7 @@
         color: #8b96b5;
         margin: 16px 0 28px;
       }
-      a {
+      body > div > a {
         display: inline-block;
         padding: 12px 28px;
         background: linear-gradient(90deg, #4f8cff, #7c3aed);
@@ -50,5 +60,68 @@
       <p>ඔබ සොයන පිටුව හමු නොවීය.</p>
       <a href="/">← Home</a>
     </div>
+    <footer class="site-footer">
+      <div class="container footer-main">
+        <div>
+          <a
+            href="/"
+            class="site-logo"
+            style="margin-bottom: 12px; display: inline-block"
+            >TIPIZ</a
+          >
+          <p
+            style="
+              font-size: 13px;
+              color: var(--muted);
+              line-height: 1.7;
+              max-width: 340px;
+            "
+          >
+            Watch your favourite movies and TV series. High quality streaming on
+            any device.
+          </p>
+        </div>
+        <div>
+          <h4>Browse</h4>
+          <a href="/browse.html?type=movie">Movies</a>
+          <a href="/browse.html?type=tv">TV Series</a>
+          <a href="/dashboard.html">My Dashboard</a>
+        </div>
+        <div>
+          <h4>Account</h4>
+          <a href="/login.html">Sign in</a>
+          <a href="/register.html">Create account</a>
+        </div>
+        <div>
+          <h4>Join Us</h4>
+          <a
+            href="https://t.me/moviezonecm"
+            target="_blank"
+            rel="noopener noreferrer"
+            >Telegram Channel</a
+          >
+          <a
+            href="https://whatsapp.com/channel/0029VbB6wmDGzzKWwSA0Wi0R"
+            target="_blank"
+            rel="noopener noreferrer"
+            >WhatsApp Channel</a
+          >
+        </div>
+        <div>
+          <h4>Contact Us</h4>
+          <a
+            href="https://t.me/Chalo_222"
+            target="_blank"
+            rel="noopener noreferrer"
+            >Telegram @Chalo_222</a
+          >
+        </div>
+      </div>
+      <div class="container">
+        <div class="footer-bottom">
+          <div>© TIPIZ</div>
+        </div>
+      </div>
+    </footer>
   </body>
 </html>

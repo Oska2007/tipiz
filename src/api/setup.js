@@ -34,6 +34,9 @@ export async function createAdmin(request, env) {
     const password = body.password;
     const name = clean(body.name) || 'Admin';
 
+    if (typeof env.JWT_SECRET !== 'string' || env.JWT_SECRET.length < 32) {
+      return fail('Authentication is not configured', 503);
+    }
     if (!env.SETUP_TOKEN) return fail('Setup is disabled', 503);
     if (token !== env.SETUP_TOKEN) return fail('Invalid setup token', 403);
     if (!isEmail(email)) return fail('Invalid email');

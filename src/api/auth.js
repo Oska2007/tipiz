@@ -7,6 +7,10 @@ import { rateLimit, clientKey } from '../middleware/rateLimit.js';
 
 const SESSION_DAYS = 7;
 
+function hasJWTSecret(env) {
+  return typeof env.JWT_SECRET === 'string' && env.JWT_SECRET.length >= 32;
+}
+
 function publicUser(user) {
   return {
     id: user.id,
@@ -42,6 +46,8 @@ async function setSessionCookies(response, user, env) {
 
 // ── POST /api/auth/register ─────────────────────
 export async function register(request, env) {
+  if (!hasJWTSecret(env)) return fail('Authentication is not configured', 503);
+
   const rl = await rateLimit(env, 'AUTH_LIMITER', `reg:${clientKey(request)}`);
   if (!rl.success) return fail('Too many attempts. Try again later.', 429);
 
@@ -84,6 +90,8 @@ export async function register(request, env) {
 
 // ── POST /api/auth/login ────────────────────────
 export async function login(request, env) {
+  if (!hasJWTSecret(env)) return fail('Authentication is not configured', 503);
+
   const rl = await rateLimit(env, 'AUTH_LIMITER', `login:${clientKey(request)}`);
   if (!rl.success) return fail('Too many login attempts. Try again in 1 minute.', 429);
 

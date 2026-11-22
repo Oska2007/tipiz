@@ -31,7 +31,11 @@ export async function getWatchInfo(request, env) {
     media = await getOne(
       env,
       `SELECT id, name as title, still_path, video_id, video_source_id, series_id, season_id, episode_number, overview
-       FROM episodes WHERE id = ?`,
+       FROM episodes
+       WHERE id = ? AND EXISTS (
+         SELECT 1 FROM tv_series
+         WHERE tv_series.id = episodes.series_id AND tv_series.status = 'published'
+       )`,
       id
     );
     if (!media) return fail('Episode not found', 404);
@@ -131,9 +135,48 @@ export async function saveProgress(request, env) {
   let body;
   try { body = await request.json(); } catch { return fail('Invalid JSON'); }
 
-  const { media_type, media_id, series_id, season_number, episode_number, position_seconds, duration_seconds } = body;
+  if (!body || typeof body !== 'object') return fail('Invalid request body');
+  const { media_type, media_id, position_seconds, duration_seconds } = body;
 
-  if (!media_type || !media_id) return fail('Missing media_type or media_id');
+  if (
+    !['movie', 'episode'].includes(media_type) ||
+    !Number.isSafeInteger(media_id) ||
+    media_id < 1
+  ) {
+    return fail('Invalid media type or ID');
+  }
+  if (
+    typeof position_seconds !== 'number' ||
+    !Number.isFinite(position_seconds) ||
+    position_seconds < 0 ||
+    typeof duration_seconds !== 'number' ||
+    !Number.isFinite(duration_seconds) ||
+    duration_seconds < 0 ||
+    position_seconds > duration_seconds
+  ) {
+    return fail('Invalid playback position or duration');
+  }
+
+  let seriesId = null;
+  let seasonNumber = null;
+  let episodeNumber = null;
+  const media = media_type === 'movie'
+    ? await getOne(env, "SELECT id FROM movies WHERE id = ? AND status = 'published'", media_id)
+    : await getOne(
+      env,
+      `SELECT e.series_id, s.season_number, e.episode_number
+       FROM episodes e
+       JOIN seasons s ON s.id = e.season_id
+       JOIN tv_series t ON t.id = e.series_id
+       WHERE e.id = ? AND t.status = 'published'`,
+      media_id
+    );
+  if (!media) return fail('Media not found', 404);
+  if (media_type === 'episode') {
+    seriesId = media.series_id;
+    seasonNumber = media.season_number;
+    episodeNumber = media.episode_number;
+  }
 
   const isCompleted = duration_seconds > 0 && position_seconds / duration_seconds > 0.95 ? 1 : 0;
 
@@ -150,11 +193,11 @@ export async function saveProgress(request, env) {
     session.sub,
     media_type,
     media_id,
-    series_id || null,
-    season_number || null,
-    episode_number || null,
-    Math.floor(position_seconds || 0),
-    Math.floor(duration_seconds || 0),
+    seriesId,
+    seasonNumber,
+    episodeNumber,
+    Math.floor(position_seconds),
+    Math.floor(duration_seconds),
     isCompleted,
     new Date().toISOString()
   );

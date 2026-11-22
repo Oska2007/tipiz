@@ -11,33 +11,41 @@
       <div class="container">
         <a href="/" class="site-logo">TIPIZ</a>
         <nav class="site-nav">
-          <a href="/">Home</a>
           <a href="/browse.html?type=movie" id="nav-movies">Movies</a>
           <a href="/browse.html?type=tv" id="nav-tv">TV Series</a>
         </nav>
 
-        <a href="/search.html" class="nav-filter-icon" title="Search & Filters">
-          <svg
-            width="20"
-            height="20"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            viewBox="0 0 24 24"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <line x1="4" y1="21" x2="4" y2="14"></line>
-            <line x1="4" y1="10" x2="4" y2="3"></line>
-            <line x1="12" y1="21" x2="12" y2="12"></line>
-            <line x1="12" y1="8" x2="12" y2="3"></line>
-            <line x1="20" y1="21" x2="20" y2="16"></line>
-            <line x1="20" y1="12" x2="20" y2="3"></line>
-            <line x1="1" y1="14" x2="7" y2="14"></line>
-            <line x1="9" y1="8" x2="15" y2="8"></line>
-            <line x1="17" y1="16" x2="23" y2="16"></line>
-          </svg>
-        </a>
+        <div class="nav-tools">
+          <button type="button" class="nav-search-toggle" id="nav-search-toggle" aria-label="Search by title" aria-expanded="false" aria-controls="nav-search-form" title="Search">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="7"></circle>
+              <path d="m20 20-4-4"></path>
+            </svg>
+          </button>
+          <a href="/search.html" class="nav-filter-toggle" aria-label="Filters" title="Filters">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="4" y1="6" x2="20" y2="6"></line>
+              <circle cx="9" cy="6" r="2"></circle>
+              <line x1="4" y1="12" x2="20" y2="12"></line>
+              <circle cx="15" cy="12" r="2"></circle>
+              <line x1="4" y1="18" x2="20" y2="18"></line>
+              <circle cx="11" cy="18" r="2"></circle>
+            </svg>
+          </a>
+        </div>
+        <form id="nav-search-form" class="nav-search-form" role="search" hidden>
+          <div class="nav-search-input-row">
+            <input type="search" name="q" placeholder="Search movies & TV..." aria-label="Search by title" autocomplete="off" />
+            <button type="submit" aria-label="Search" title="Search">
+              <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="11" cy="11" r="7.5"></circle>
+                <path d="m16.5 16.5 4 4"></path>
+              </svg>
+              <span>Search</span>
+            </button>
+          </div>
+          <a class="nav-search-advanced" href="/search.html">Advanced filters</a>
+        </form>
 
         <div class="nav-auth" id="nav-auth"></div>
       </div>
@@ -51,19 +59,71 @@
 
         <div id="results-grid" class="results-grid"></div>
 
-        <div style="text-align: center; padding: 40px 0">
-          <button
-            id="load-more-btn"
-            class="btn-hero btn-hero-secondary"
-            style="display: none"
-          >
-            Load More
-          </button>
-        </div>
+        <nav id="pagination" class="pagination" aria-label="Browse pages" hidden>
+          <a id="previous-page" class="pagination-link" href="#" aria-label="Previous page">Previous</a>
+          <span id="page-status" class="pagination-status" aria-live="polite"></span>
+          <a id="next-page" class="pagination-link" href="#" aria-label="Next page">Next</a>
+        </nav>
       </div>
     </main>
 
     <footer class="site-footer">
+      <div class="container footer-main">
+        <div>
+          <a
+            href="/"
+            class="site-logo"
+            style="margin-bottom: 12px; display: inline-block"
+            >TIPIZ</a
+          >
+          <p
+            style="
+              font-size: 13px;
+              color: var(--muted);
+              line-height: 1.7;
+              max-width: 340px;
+            "
+          >
+            Watch your favourite movies and TV series. High quality streaming on
+            any device.
+          </p>
+        </div>
+        <div>
+          <h4>Browse</h4>
+          <a href="/browse.html?type=movie">Movies</a>
+          <a href="/browse.html?type=tv">TV Series</a>
+          <a href="/dashboard.html">My Dashboard</a>
+        </div>
+        <div>
+          <h4>Account</h4>
+          <a href="/login.html">Sign in</a>
+          <a href="/register.html">Create account</a>
+        </div>
+        <div>
+          <h4>Join Us</h4>
+          <a
+            href="https://t.me/moviezonecm"
+            target="_blank"
+            rel="noopener noreferrer"
+            >Telegram Channel</a
+          >
+          <a
+            href="https://whatsapp.com/channel/0029VbB6wmDGzzKWwSA0Wi0R"
+            target="_blank"
+            rel="noopener noreferrer"
+            >WhatsApp Channel</a
+          >
+        </div>
+        <div>
+          <h4>Contact Us</h4>
+          <a
+            href="https://t.me/Chalo_222"
+            target="_blank"
+            rel="noopener noreferrer"
+            >Telegram @Chalo_222</a
+          >
+        </div>
+      </div>
       <div class="container">
         <div class="footer-bottom">
           <div class="tmdb-attribution">
@@ -83,10 +143,9 @@
       initPage();
 
       const params = new URLSearchParams(window.location.search);
-      const type = params.get("type") || "movie";
+      const type = params.get("type") === "tv" ? "tv" : "movie";
       const limit = 12;
-      let currentPage = 1;
-      let totalPages = 1;
+      const currentPage = Math.max(1, Number.parseInt(params.get("page") || "1", 10) || 1);
 
       const pageTitle = document.getElementById("page-title");
       if (type === "tv") {
@@ -101,15 +160,11 @@
 
       async function loadItems(page) {
         const grid = document.getElementById("results-grid");
-        const loadMoreBtn = document.getElementById("load-more-btn");
+        const pagination = document.getElementById("pagination");
 
-        if (page === 1)
-          grid.innerHTML =
-            '<div style="color:var(--muted); grid-column: 1/-1; text-align:center; padding:40px;">Loading...</div>';
-        else {
-          loadMoreBtn.textContent = "Loading...";
-          loadMoreBtn.disabled = true;
-        }
+        grid.innerHTML =
+          '<div style="color:var(--muted); grid-column: 1/-1; text-align:center; padding:40px;">Loading...</div>';
+        pagination.hidden = true;
 
         try {
           const endpoint =
@@ -118,24 +173,41 @@
               : `/api/movies?page=${page}&limit=${limit}`;
           const data = await api.get(endpoint);
 
-          totalPages = data.total_pages || 1;
+          if (data.total_pages && page > data.total_pages) {
+            window.location.replace(
+              `/browse.html?type=${type}&page=${data.total_pages}`
+            );
+            return;
+          }
 
-          if (page === 1 && (!data.results || !data.results.length)) {
+          if (!data.results || !data.results.length) {
             grid.innerHTML =
               '<div class="empty-state" style="grid-column: 1/-1;"><h3>No items found</h3></div>';
             return;
           }
 
-          const html = data.results.map(movieCard).join("");
-          if (page === 1) grid.innerHTML = html;
-          else grid.insertAdjacentHTML("beforeend", html);
+          grid.innerHTML = data.results.map(movieCard).join("");
 
-          if (currentPage < totalPages) {
-            loadMoreBtn.style.display = "inline-block";
-            loadMoreBtn.textContent = "Load More";
-            loadMoreBtn.disabled = false;
-          } else {
-            loadMoreBtn.style.display = "none";
+          const totalPages = data.total_pages || 1;
+          if (totalPages > 1) {
+            const pageUrl = (pageNumber) =>
+              `/browse.html?type=${type}&page=${pageNumber}`;
+            const previousLink = document.getElementById("previous-page");
+            const nextLink = document.getElementById("next-page");
+
+            previousLink.href = pageUrl(page - 1);
+            previousLink.classList.toggle("disabled", page <= 1);
+            previousLink.setAttribute("aria-disabled", String(page <= 1));
+            if (page <= 1) previousLink.removeAttribute("href");
+
+            nextLink.href = pageUrl(page + 1);
+            nextLink.classList.toggle("disabled", page >= totalPages);
+            nextLink.setAttribute("aria-disabled", String(page >= totalPages));
+            if (page >= totalPages) nextLink.removeAttribute("href");
+
+            document.getElementById("page-status").textContent =
+              `Page ${page} of ${totalPages}`;
+            pagination.hidden = false;
           }
         } catch (err) {
           grid.innerHTML = `<div style="color:var(--danger); grid-column: 1/-1; text-align:center;">${esc(err.message)}</div>`;
@@ -143,10 +215,6 @@
       }
 
       loadItems(currentPage);
-      document.getElementById("load-more-btn").onclick = () => {
-        currentPage++;
-        loadItems(currentPage);
-      };
     </script>
   </body>
 </html>

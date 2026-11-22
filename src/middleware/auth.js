@@ -3,6 +3,7 @@ import { verifyJWT } from '../lib/crypto.js';
 import { getOne } from '../lib/db.js';
 
 export async function getSession(request, env) {
+  if (typeof env.JWT_SECRET !== 'string' || env.JWT_SECRET.length < 32) return null;
   const token = getCookie(request, 'tipiz_session');
   if (!token) return null;
   return await verifyJWT(token, env.JWT_SECRET);

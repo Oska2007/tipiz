@@ -36,3 +36,6 @@ simple = { limit = 120, period = 60 }
 # ─── Environment variables ───────────────────────────
 [vars]
 ENVIRONMENT = "production"
+
+# Configure as secrets with `wrangler secret put <NAME>`:
+# JWT_SECRET (minimum 32 characters), VPS_API_KEY, SETUP_TOKEN

@@ -62,6 +62,10 @@ export async function verifyPassword(password, stored, pepper = '') {
 
 // ── JWT (HS256) ────────────────────────────────
 export async function signJWT(payload, secret, expiresInSeconds = 7 * 24 * 3600) {
+  if (typeof secret !== 'string' || secret.length < 32) {
+    throw new Error('JWT_SECRET must be configured with at least 32 characters.');
+  }
+
   const header = { alg: 'HS256', typ: 'JWT' };
   const now = Math.floor(Date.now() / 1000);
   const body = { ...payload, iat: now, exp: now + expiresInSeconds };
@@ -80,6 +84,8 @@ export async function signJWT(payload, secret, expiresInSeconds = 7 * 24 * 3600)
 }
 
 export async function verifyJWT(token, secret) {
+  if (typeof secret !== 'string' || secret.length < 32) return null;
+
   try {
     const parts = token.split('.');
     if (parts.length !== 3) return null;

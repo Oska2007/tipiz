@@ -2,12 +2,26 @@
 // පොදුවේ පාවිච්චි කරන functions (cards, navbar, auth state)
 
 const { api } = window.tipiz;
+const languageDisplayNames = typeof Intl.DisplayNames === 'function'
+  ? new Intl.DisplayNames(['en'], { type: 'language' })
+  : null;
 
 // ── HTML escape (XSS protection) ──────────────
 export function esc(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
   }[c]));
+}
+
+export function languageName(code) {
+  const language = String(code || '').trim();
+  if (!language) return '';
+
+  try {
+    return languageDisplayNames?.of(language) || language.toUpperCase();
+  } catch {
+    return language.toUpperCase();
+  }
 }
 
 // ── Movie card ────────────────────────────────
@@ -79,12 +93,38 @@ export async function initNavbar() {
 
 // ── Search bar (navbar) ──────────────────────
 export function initSearchBar() {
+  const toggle = document.getElementById('nav-search-toggle');
   const form = document.getElementById('nav-search-form');
-  if (!form) return;
+  const input = form?.querySelector('input[type="search"]');
+  if (!toggle || !form || !input) return;
+
+  const closeSearch = () => {
+    form.hidden = true;
+    toggle.setAttribute('aria-expanded', 'false');
+  };
+
+  toggle.addEventListener('click', () => {
+    const shouldOpen = form.hidden;
+    form.hidden = !shouldOpen;
+    toggle.setAttribute('aria-expanded', String(shouldOpen));
+    if (shouldOpen) input.focus();
+  });
+
   form.addEventListener('submit', (e) => {
     e.preventDefault();
-    const q = form.querySelector('input').value.trim();
+    const q = input.value.trim();
     if (q) window.location.href = `/search.html?q=${encodeURIComponent(q)}`;
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!form.contains(e.target) && !toggle.contains(e.target)) closeSearch();
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !form.hidden) {
+      closeSearch();
+      toggle.focus();
+    }
   });
 }
 

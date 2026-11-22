@@ -24,7 +24,7 @@ export async function listPublic(request, env) {
 
   const rows = await getAll(env,
     `SELECT id, tmdb_id, name, overview, poster_path, backdrop_path,
-            first_air_date, number_of_seasons, vote_average
+            first_air_date, number_of_seasons, vote_average, original_language
      FROM tv_series WHERE status = 'published'
      ORDER BY created_at DESC LIMIT ? OFFSET ?`,
     limit, offset
@@ -82,6 +82,10 @@ export async function importFromTMDB(request, env) {
   try { data = await tmdb.getTVDetails(env, body.tmdb_id); }
   catch (err) { return fail(err.message, 500); }
 
+  const originalLanguage =
+    typeof data.original_language === 'string'
+      ? data.original_language.trim().toLowerCase()
+      : null;
   const genres = tmdb.extractGenres(data.genres);
   const cast = tmdb.extractCast(data.credits, 10);
   const trailer = tmdb.extractTrailer(data.videos);
@@ -93,11 +97,12 @@ export async function importFromTMDB(request, env) {
     seriesId = existing.id;
     await run(
       env,
-      `UPDATE tv_series SET name=?, original_name=?, overview=?, poster_path=?, backdrop_path=?,
+      `UPDATE tv_series SET name=?, original_name=?, original_language=?, overview=?, poster_path=?, backdrop_path=?,
         first_air_date=?, number_of_seasons=?, vote_average=?, trailer_key=?, genres_json=?,
         cast_json=?, updated_at=? WHERE id=?`,
       data.name,
       data.original_name || data.name,
+      originalLanguage,
       data.overview || '',
       data.poster_path,
       data.backdrop_path,
@@ -114,12 +119,13 @@ export async function importFromTMDB(request, env) {
     seriesId = await insert(
       env,
       `INSERT INTO tv_series
-        (tmdb_id, name, original_name, overview, poster_path, backdrop_path,
+        (tmdb_id, name, original_name, original_language, overview, poster_path, backdrop_path,
          first_air_date, number_of_seasons, vote_average, trailer_key, genres_json, cast_json, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft')`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft')`,
       data.id,
       data.name,
       data.original_name || data.name,
+      originalLanguage,
       data.overview || '',
       data.poster_path,
       data.backdrop_path,
@@ -242,6 +248,10 @@ export async function listEpisodes(request, env, id) {
 
   const series = await getOne(env, 'SELECT id, status FROM tv_series WHERE id = ?', id);
   if (!series) return fail('Series not found', 404);
+  if (series.status !== 'published') {
+    const auth = await requireAdmin(request, env);
+    if (auth.error) return auth.error;
+  }
 
   let rows;
   if (season) {

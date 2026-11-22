@@ -11,33 +11,41 @@
       <div class="container">
         <a href="/" class="site-logo">TIPIZ</a>
         <nav class="site-nav">
-          <a href="/">Home</a>
           <a href="/browse.html?type=movie" class="active">Movies</a>
           <a href="/browse.html?type=tv">TV Series</a>
         </nav>
 
-        <a href="/search.html" class="nav-filter-icon" title="Search & Filters">
-          <svg
-            width="20"
-            height="20"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            viewBox="0 0 24 24"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <line x1="4" y1="21" x2="4" y2="14"></line>
-            <line x1="4" y1="10" x2="4" y2="3"></line>
-            <line x1="12" y1="21" x2="12" y2="12"></line>
-            <line x1="12" y1="8" x2="12" y2="3"></line>
-            <line x1="20" y1="21" x2="20" y2="16"></line>
-            <line x1="20" y1="12" x2="20" y2="3"></line>
-            <line x1="1" y1="14" x2="7" y2="14"></line>
-            <line x1="9" y1="8" x2="15" y2="8"></line>
-            <line x1="17" y1="16" x2="23" y2="16"></line>
-          </svg>
-        </a>
+        <div class="nav-tools">
+          <button type="button" class="nav-search-toggle" id="nav-search-toggle" aria-label="Search by title" aria-expanded="false" aria-controls="nav-search-form" title="Search">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="7"></circle>
+              <path d="m20 20-4-4"></path>
+            </svg>
+          </button>
+          <a href="/search.html" class="nav-filter-toggle" aria-label="Filters" title="Filters">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="4" y1="6" x2="20" y2="6"></line>
+              <circle cx="9" cy="6" r="2"></circle>
+              <line x1="4" y1="12" x2="20" y2="12"></line>
+              <circle cx="15" cy="12" r="2"></circle>
+              <line x1="4" y1="18" x2="20" y2="18"></line>
+              <circle cx="11" cy="18" r="2"></circle>
+            </svg>
+          </a>
+        </div>
+        <form id="nav-search-form" class="nav-search-form" role="search" hidden>
+          <div class="nav-search-input-row">
+            <input type="search" name="q" placeholder="Search movies & TV..." aria-label="Search by title" autocomplete="off" />
+            <button type="submit" aria-label="Search" title="Search">
+              <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="11" cy="11" r="7.5"></circle>
+                <path d="m16.5 16.5 4 4"></path>
+              </svg>
+              <span>Search</span>
+            </button>
+          </div>
+          <a class="nav-search-advanced" href="/search.html">Advanced filters</a>
+        </form>
 
         <div class="nav-auth" id="nav-auth"></div>
       </div>
@@ -53,6 +61,62 @@
     </main>
 
     <footer class="site-footer">
+      <div class="container footer-main">
+        <div>
+          <a
+            href="/"
+            class="site-logo"
+            style="margin-bottom: 12px; display: inline-block"
+            >TIPIZ</a
+          >
+          <p
+            style="
+              font-size: 13px;
+              color: var(--muted);
+              line-height: 1.7;
+              max-width: 340px;
+            "
+          >
+            Watch your favourite movies and TV series. High quality streaming on
+            any device.
+          </p>
+        </div>
+        <div>
+          <h4>Browse</h4>
+          <a href="/browse.html?type=movie">Movies</a>
+          <a href="/browse.html?type=tv">TV Series</a>
+          <a href="/dashboard.html">My Dashboard</a>
+        </div>
+        <div>
+          <h4>Account</h4>
+          <a href="/login.html">Sign in</a>
+          <a href="/register.html">Create account</a>
+        </div>
+        <div>
+          <h4>Join Us</h4>
+          <a
+            href="https://t.me/moviezonecm"
+            target="_blank"
+            rel="noopener noreferrer"
+            >Telegram Channel</a
+          >
+          <a
+            href="https://whatsapp.com/channel/0029VbB6wmDGzzKWwSA0Wi0R"
+            target="_blank"
+            rel="noopener noreferrer"
+            >WhatsApp Channel</a
+          >
+        </div>
+        <div>
+          <h4>Contact Us</h4>
+          <a
+            href="https://t.me/Chalo_222"
+            target="_blank"
+            rel="noopener noreferrer"
+            >Telegram @Chalo_222</a
+          >
+        </div>
+      </div>
       <div class="container">
         <div class="footer-bottom">
           <div class="tmdb-attribution">
@@ -66,7 +130,7 @@
 
     <script type="module" src="/js/api.js"></script>
     <script type="module">
-      import { movieCard, initPage, esc, placeholderPoster } from "/js/app.js";
+      import { movieCard, initPage, esc, placeholderPoster, languageName } from "/js/app.js";
       const { api } = window.tipiz;
 
       initPage();
@@ -89,6 +153,7 @@
           document.title = `${movie.title} — TIPIZ`;
 
           const year = movie.release_date ? movie.release_date.slice(0, 4) : "";
+          const language = languageName(movie.original_language);
           const runtime = movie.runtime
             ? `${Math.floor(movie.runtime / 60)}h ${movie.runtime % 60}m`
             : "";
@@ -129,7 +194,7 @@
               <div class="details-poster"><img src="${esc(poster)}" alt="${esc(movie.title)}" /></div>
               <div class="details-info">
                 <h1>${esc(movie.title)}</h1>
-                <div class="details-meta"><span class="rating">★ ${rating}</span>${year ? `<span>${year}</span>` : ""}${runtime ? `<span>${runtime}</span>` : ""}</div>
+                <div class="details-meta"><span class="rating">★ ${rating}</span>${year ? `<span>${year}</span>` : ""}${runtime ? `<span>${runtime}</span>` : ""}${language ? `<span>${esc(language)}</span>` : ""}</div>
                 ${genresHtml}
                 <p class="details-overview">${esc(movie.overview || "")}</p>
                 

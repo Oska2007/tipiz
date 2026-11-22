@@ -1,10 +1,13 @@
 import { ok, fail } from '../lib/response.js';
-import { insert } from '../lib/db.js';
+import { getAll, insert } from '../lib/db.js';
+
+function isAuthorized(request, env) {
+  const key = env.VPS_API_KEY;
+  return Boolean(key && request.headers.get('Authorization') === `Bearer ${key}`);
+}
 
 export async function syncVideo(request, env) {
-  // API Key එක චෙක් කරන්න (ආරක්ෂාවට)
-  const authHeader = request.headers.get('Authorization');
-  if (!authHeader || authHeader !== `Bearer ${env.VPS_API_KEY}`) {
+  if (!isAuthorized(request, env)) {
     return fail('Unauthorized', 401);
   }
 
@@ -30,8 +33,7 @@ export async function syncVideo(request, env) {
 }
 
 export async function assignVideoSource(request, env) {
-  const authHeader = request.headers.get('Authorization');
-  if (!authHeader || authHeader !== `Bearer ${env.VPS_API_KEY}`) {
+  if (!isAuthorized(request, env)) {
     return fail('Unauthorized', 401);
   }
 
@@ -59,25 +61,45 @@ export async function assignVideoSource(request, env) {
 
 // GET /api/vps/videos
 export async function listVideoSources(request, env) {
-  const authHeader = request.headers.get('Authorization');
-  if (!authHeader || authHeader !== `Bearer ${env.VPS_API_KEY}`) return fail('Unauthorized', 401);
+  if (!isAuthorized(request, env)) return fail('Unauthorized', 401);
 
   const rows = await getAll(env, 'SELECT id, title, created_at FROM video_sources ORDER BY created_at DESC LIMIT 50');
   return ok({ results: rows });
 }
 
 export async function backupDatabase(request, env) {
-  const authHeader = request.headers.get('Authorization');
-  if (!authHeader || authHeader !== `Bearer ${env.VPS_API_KEY}`) return fail('Unauthorized', 401);
+  if (!isAuthorized(request, env)) return fail('Unauthorized', 401);
 
   try {
-    const tables = ['users', 'movies', 'tv_series', 'seasons', 'episodes', 'video_sources', 'settings'];
-    const backup = {};
-    
-    for (const table of tables) {
-      const res = await env.DB.prepare(`SELECT * FROM ${table}`).all();
-      backup[table] = res.results;
-    }
+    const [
+      users,
+      movies,
+      tvSeries,
+      seasons,
+      episodes,
+      videoSources,
+      settings,
+    ] = await Promise.all([
+      env.DB.prepare(
+        'SELECT id, email, name, role, email_verified, created_at, updated_at FROM users'
+      ).all(),
+      env.DB.prepare('SELECT * FROM movies').all(),
+      env.DB.prepare('SELECT * FROM tv_series').all(),
+      env.DB.prepare('SELECT * FROM seasons').all(),
+      env.DB.prepare('SELECT * FROM episodes').all(),
+      env.DB.prepare('SELECT * FROM video_sources').all(),
+      env.DB.prepare('SELECT key, value, is_secret, updated_at FROM settings WHERE is_secret = 0').all(),
+    ]);
+
+    const backup = {
+      users: users.results,
+      movies: movies.results,
+      tv_series: tvSeries.results,
+      seasons: seasons.results,
+      episodes: episodes.results,
+      video_sources: videoSources.results,
+      settings: settings.results,
+    };
 
     return new Response(JSON.stringify(backup, null, 2), {
       headers: { 

@@ -32,7 +32,7 @@ export async function listPublic(request, env) {
   const rows = await getAll(
     env,
     `SELECT id, tmdb_id, title, overview, poster_path, backdrop_path,
-            release_date, runtime, vote_average
+            release_date, runtime, vote_average, original_language
      FROM movies WHERE ${where} ORDER BY ${orderBy} LIMIT ? OFFSET ?`,
     ...params, limit, offset
   );
@@ -97,6 +97,10 @@ export async function importFromTMDB(request, env) {
   try { data = await tmdb.getMovieDetails(env, body.tmdb_id); }
   catch (err) { return fail(err.message, 500); }
 
+  const originalLanguage =
+    typeof data.original_language === 'string'
+      ? data.original_language.trim().toLowerCase()
+      : null;
   const genres = tmdb.extractGenres(data.genres);
   const cast = tmdb.extractCast(data.credits, 10);
   const trailer = tmdb.extractTrailer(data.videos);
@@ -106,11 +110,12 @@ export async function importFromTMDB(request, env) {
   if (existing) {
     await run(
       env,
-      `UPDATE movies SET title=?, original_title=?, overview=?, poster_path=?, backdrop_path=?,
+      `UPDATE movies SET title=?, original_title=?, original_language=?, overview=?, poster_path=?, backdrop_path=?,
         release_date=?, runtime=?, vote_average=?, trailer_key=?, genres_json=?, cast_json=?,
         updated_at=? WHERE id=?`,
       data.title,
       data.original_title || data.title,
+      originalLanguage,
       data.overview || '',
       data.poster_path,
       data.backdrop_path,
@@ -129,12 +134,13 @@ export async function importFromTMDB(request, env) {
   const id = await insert(
     env,
     `INSERT INTO movies
-      (tmdb_id, title, original_title, overview, poster_path, backdrop_path,
+      (tmdb_id, title, original_title, original_language, overview, poster_path, backdrop_path,
        release_date, runtime, vote_average, trailer_key, genres_json, cast_json, status)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft')`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft')`,
     data.id,
     data.title,
     data.original_title || data.title,
+    originalLanguage,
     data.overview || '',
     data.poster_path,
     data.backdrop_path,
