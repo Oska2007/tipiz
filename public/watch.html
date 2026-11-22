@@ -6,11 +6,9 @@
     <title>Watch — TIPIZ</title>
     <link rel="stylesheet" href="/css/style.css" />
 
-    <!-- HLS.js (m3u8 සඳහා) -->
     <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.7/dist/hls.min.js"></script>
 
     <style>
-      /* Player-specific styles */
       .watch-page {
         background: #000;
         min-height: 100vh;
@@ -28,6 +26,7 @@
         height: 100%;
         display: block;
         background: #000;
+        object-fit: contain;
       }
 
       /* Custom Controls */
@@ -36,26 +35,30 @@
         bottom: 0;
         left: 0;
         right: 0;
-        padding: 40px 20px 20px;
+        padding: 40px 20px 15px;
         background: linear-gradient(to top, rgba(0, 0, 0, 0.9), transparent);
         display: flex;
         flex-direction: column;
-        gap: 10px;
+        gap: 8px;
         opacity: 0;
-        transition: opacity 0.2s;
+        transition: opacity 0.3s;
+        z-index: 10;
       }
       .player-container:hover .player-controls,
-      .player-container.paused .player-controls {
+      .player-container.paused .player-controls,
+      .player-container.show-controls .player-controls {
         opacity: 1;
       }
 
+      /* Seek Bar */
       .seek-bar {
         width: 100%;
-        height: 6px;
+        height: 5px;
         background: rgba(255, 255, 255, 0.2);
         border-radius: 3px;
         cursor: pointer;
         position: relative;
+        margin-bottom: 5px;
       }
       .seek-fill {
         height: 100%;
@@ -73,12 +76,17 @@
         height: 12px;
         background: #fff;
         border-radius: 50%;
+        opacity: 0;
+        transition: opacity 0.2s;
+      }
+      .player-container:hover .seek-fill::after {
+        opacity: 1;
       }
 
       .controls-row {
         display: flex;
         align-items: center;
-        gap: 16px;
+        gap: 15px;
         color: #fff;
       }
       .controls-row button {
@@ -86,95 +94,54 @@
         border: none;
         color: #fff;
         cursor: pointer;
-        font-size: 18px;
-        padding: 4px;
+        font-size: 16px;
+        padding: 5px;
         display: flex;
         align-items: center;
+        transition: color 0.2s;
       }
       .controls-row button:hover {
         color: var(--accent-1);
       }
       .time-display {
         font-size: 13px;
-        font-variant-numeric: tabular-nums;
         color: #ccc;
+        font-variant-numeric: tabular-nums;
       }
-
       .volume-wrap {
         display: flex;
         align-items: center;
-        gap: 6px;
+        gap: 5px;
       }
       .volume-slider {
-        width: 80px;
+        width: 70px;
         accent-color: var(--accent-1);
+        cursor: pointer;
       }
-
       .spacer {
         flex: 1;
       }
-
       select.ctrl-select {
-        background: #111;
-        border: 1px solid #333;
+        background: rgba(0, 0, 0, 0.5);
+        border: 1px solid rgba(255, 255, 255, 0.3);
         color: #fff;
         padding: 4px 8px;
         border-radius: 4px;
         font-size: 12px;
-      }
-
-      .resume-banner {
-        position: absolute;
-        top: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: rgba(15, 20, 36, 0.95);
-        border: 1px solid var(--border);
-        padding: 14px 20px;
-        border-radius: 10px;
-        display: flex;
-        gap: 16px;
-        align-items: center;
-        z-index: 10;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-      }
-      .resume-banner p {
-        color: #fff;
-        font-size: 14px;
-        margin: 0;
-      }
-      .resume-banner button {
-        padding: 8px 16px;
-        border-radius: 6px;
-        border: none;
         cursor: pointer;
-        font-weight: 600;
-        font-size: 13px;
       }
-      .resume-yes {
-        background: var(--accent-1);
-        color: #fff;
-      }
-      .resume-no {
-        background: #333;
-        color: #fff;
+      select.ctrl-select option {
+        background: #0f1424;
       }
 
-      .loading-spinner {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        color: var(--accent-1);
-        font-size: 40px;
-        animation: spin 1s linear infinite;
-      }
-      @keyframes spin {
-        100% {
-          transform: translate(-50%, -50%) rotate(360deg);
-        }
+      video::cue {
+        background: rgba(0, 0, 0, 0.8);
+        color: #fff;
+        font-size: 20px;
+        font-family: sans-serif;
       }
 
+      /* Info Section */
       .watch-info {
         max-width: 1400px;
         margin: 0 auto;
@@ -196,25 +163,34 @@
         margin-top: 20px;
         flex-wrap: wrap;
       }
+
+      @media (max-width: 768px) {
+        .player-container {
+          aspect-ratio: 16 / 9;
+        }
+        .player-controls {
+          padding: 20px 10px 10px;
+          gap: 4px;
+        }
+        .volume-wrap {
+          display: none;
+        }
+        .time-display {
+          font-size: 11px;
+        }
+        .controls-row {
+          gap: 10px;
+        }
+        video::cue {
+          font-size: 14px;
+        }
+      }
     </style>
   </head>
   <body class="watch-page">
     <div class="player-container" id="player-wrap" style="display: none">
       <video class="video-element" id="video" crossorigin="anonymous"></video>
 
-      <!-- Loading -->
-      <div class="loading-spinner" id="spinner">◌</div>
-
-      <!-- Resume Banner -->
-      <div class="resume-banner" id="resume-banner" style="display: none">
-        <p>Resume from <strong id="resume-time">00:00</strong>?</p>
-        <div style="display: flex; gap: 8px">
-          <button class="resume-yes" id="resume-yes">Resume</button>
-          <button class="resume-no" id="resume-no">Start Over</button>
-        </div>
-      </div>
-
-      <!-- Custom Controls -->
       <div class="player-controls" id="controls">
         <div class="seek-bar" id="seek-bar">
           <div class="seek-fill" id="seek-fill"></div>
@@ -253,9 +229,6 @@
             <option value="">Subtitles Off</option>
           </select>
 
-          <button id="btn-next" style="display: none" title="Next Episode">
-            ⏭
-          </button>
           <button id="btn-fullscreen" title="Fullscreen">⛶</button>
         </div>
       </div>
@@ -285,7 +258,7 @@
       ></p>
 
       <div class="nav-btns">
-        <a href="/" class="btn-hero btn-hero-secondary" id="back-btn">← Back</a>
+        <!-- Back button එක මෙතනින් අයින් කරලා තියෙනවා -->
         <a
           href="#"
           class="btn-hero btn-hero-primary"
@@ -300,14 +273,11 @@
     <script type="module">
       const { api } = window.tipiz;
       const params = new URLSearchParams(window.location.search);
-      const type = params.get("type"); // 'movie' හෝ 'episode'
+      const type = params.get("type");
       const id = params.get("id");
 
       const video = document.getElementById("video");
       const playerWrap = document.getElementById("player-wrap");
-      const spinner = document.getElementById("spinner");
-      const resumeBanner = document.getElementById("resume-banner");
-      const resumeTimeEl = document.getElementById("resume-time");
       const btnPlay = document.getElementById("btn-play");
       const btnMute = document.getElementById("btn-mute");
       const btnFullscreen = document.getElementById("btn-fullscreen");
@@ -319,7 +289,6 @@
       const subtitleSelect = document.getElementById("subtitle-select");
 
       let hls = null;
-      let resumePosition = 0;
       let saveInterval = null;
       let currentData = null;
 
@@ -341,7 +310,6 @@
         document.getElementById("err-msg").textContent = msg;
       }
 
-      // ── Load video data ──────────────────
       async function load() {
         if (!type || !id) {
           showError("Invalid URL", "Missing type or id parameter");
@@ -352,7 +320,6 @@
           const data = await api.get(`/api/watch/${type}/${id}`);
           currentData = data;
 
-          // Update page info
           document.title = `${data.media.title || data.media.name} — TIPIZ`;
           document.getElementById("watch-info").style.display = "block";
           document.getElementById("info-title").textContent =
@@ -361,11 +328,6 @@
           if (type === "episode") {
             document.getElementById("info-meta").textContent =
               `Episode ${data.media.episode_number}`;
-            document.getElementById("back-btn").href =
-              `/tv.html?id=${data.media.series_id}`;
-          } else {
-            document.getElementById("back-btn").href =
-              `/movie.html?id=${data.media.id}`;
           }
 
           if (data.media.overview) {
@@ -373,69 +335,29 @@
               data.media.overview;
           }
 
-          // Next episode button
           if (data.media.next_episode) {
             const nextUrl = `/watch.html?type=episode&id=${data.media.next_episode.id}`;
-            document.getElementById("btn-next").style.display = "flex";
             document.getElementById("next-btn").style.display = "inline-block";
             document.getElementById("next-btn").href = nextUrl;
-            document.getElementById("btn-next").onclick = () =>
-              (window.location.href = nextUrl);
           }
 
-          // Subtitles
-          if (data.subtitles && data.subtitles.length) {
-            data.subtitles.forEach((sub) => {
-              const opt = document.createElement("option");
-              opt.value = sub.url;
-              opt.textContent =
-                sub.label + (sub.is_default ? " (default)" : "");
-              subtitleSelect.appendChild(opt);
-            });
-          }
-
-          // Setup player
           setupPlayer(data);
-
-          // Resume banner
-          if (
-            data.progress &&
-            data.progress.position_seconds > 30 &&
-            !data.progress.completed
-          ) {
-            resumePosition = data.progress.position_seconds;
-            resumeTimeEl.textContent = formatTime(resumePosition);
-            resumeBanner.style.display = "flex";
-          }
-
           playerWrap.style.display = "block";
         } catch (err) {
           showError("Video not available", err.message);
         }
       }
 
-      // ── Setup player (HLS or MP4) ─────────
       function setupPlayer(data) {
         const url = data.video.url;
-        spinner.style.display = "block";
 
         if (data.video.kind === "hls" && url.endsWith(".m3u8")) {
           if (Hls.isSupported()) {
             hls = new Hls();
             hls.loadSource(url);
             hls.attachMedia(video);
-            hls.on(Hls.Events.MANIFEST_PARSED, () => {
-              spinner.style.display = "none";
-            });
-            hls.on(Hls.Events.ERROR, (_, data) => {
-              if (data.fatal) {
-                spinner.style.display = "none";
-                showError("Failed to load HLS stream", data.details);
-              }
-            });
           } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
             video.src = url;
-            spinner.style.display = "none";
           } else {
             showError(
               "HLS not supported",
@@ -443,30 +365,31 @@
             );
           }
         } else {
-          // MP4
           video.src = url;
-          video.addEventListener(
-            "loadedmetadata",
-            () => {
-              spinner.style.display = "none";
-            },
-            { once: true },
-          );
+          video.play().catch(() => {
+            playerWrap.classList.add("paused");
+          });
+        }
+
+        // Subtitles ලෝඩ් කිරීම
+        video.querySelectorAll("track").forEach((t) => t.remove());
+
+        if (data.subtitles && data.subtitles.length > 0) {
+          data.subtitles.forEach((sub) => {
+            const track = document.createElement("track");
+            track.kind = "subtitles";
+            track.label = sub.label;
+            track.srclang = sub.language;
+            track.src = sub.url;
+
+            if (sub.label === "Sinhala") {
+              track.default = true;
+            }
+            video.appendChild(track);
+          });
         }
       }
 
-      // ── Resume banner ─────────────────────
-      document.getElementById("resume-yes").onclick = () => {
-        video.currentTime = resumePosition;
-        resumeBanner.style.display = "none";
-        video.play();
-      };
-      document.getElementById("resume-no").onclick = () => {
-        resumeBanner.style.display = "none";
-        video.play();
-      };
-
-      // ── Play/Pause ────────────────────────
       video.addEventListener("play", () => {
         btnPlay.textContent = "⏸";
         playerWrap.classList.remove("paused");
@@ -477,13 +400,10 @@
         playerWrap.classList.add("paused");
       });
       btnPlay.onclick = () => (video.paused ? video.play() : video.pause());
-
-      // Click video to toggle
       video.addEventListener("click", () =>
         video.paused ? video.play() : video.pause(),
       );
 
-      // ── Volume ────────────────────────────
       volumeSlider.oninput = () => {
         video.volume = volumeSlider.value;
         btnMute.textContent = video.volume === 0 ? "🔇" : "🔊";
@@ -493,7 +413,6 @@
         btnMute.textContent = video.muted || video.volume === 0 ? "🔇" : "🔊";
       };
 
-      // ── Time / Seek ───────────────────────
       video.addEventListener("timeupdate", () => {
         timeDisplay.textContent = `${formatTime(video.currentTime)} / ${formatTime(video.duration)}`;
         if (video.duration) {
@@ -509,29 +428,42 @@
         if (video.duration) video.currentTime = pct * video.duration;
       });
 
-      // ── Speed ─────────────────────────────
       speedSelect.onchange = () => {
         video.playbackRate = parseFloat(speedSelect.value);
       };
 
-      // ── Subtitles ─────────────────────────
+      video.addEventListener("loadedmetadata", () => {
+        if (video.textTracks && video.textTracks.length > 0) {
+          subtitleSelect.innerHTML = '<option value="">Subtitles Off</option>';
+
+          for (let i = 0; i < video.textTracks.length; i++) {
+            const track = video.textTracks[i];
+
+            const opt = document.createElement("option");
+            opt.value = i;
+            opt.textContent = track.label || track.language || `Track ${i + 1}`;
+            subtitleSelect.appendChild(opt);
+
+            if (
+              track.language === "si" ||
+              track.label.toLowerCase().includes("sinhala")
+            ) {
+              track.mode = "showing";
+              subtitleSelect.value = i;
+            } else {
+              track.mode = "hidden";
+            }
+          }
+        }
+      });
+
       subtitleSelect.onchange = () => {
-        // පවතින text tracks ඔක්කොම අයින් කරනවා
-        [...video.querySelectorAll("track")].forEach((t) => t.remove());
-        const v = subtitleSelect.value;
-        if (v) {
-          const track = document.createElement("track");
-          track.kind = "subtitles";
-          track.label =
-            subtitleSelect.options[subtitleSelect.selectedIndex].text;
-          track.srclang = "en";
-          track.src = v;
-          track.default = true;
-          video.appendChild(track);
+        const val = subtitleSelect.value;
+        for (let i = 0; i < video.textTracks.length; i++) {
+          video.textTracks[i].mode = val === String(i) ? "showing" : "hidden";
         }
       };
 
-      // ── Fullscreen ────────────────────────
       btnFullscreen.onclick = () => {
         if (!document.fullscreenElement) {
           playerWrap.requestFullscreen?.();
@@ -540,7 +472,6 @@
         }
       };
 
-      // ── Keyboard shortcuts ────────────────
       document.addEventListener("keydown", (e) => {
         if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT")
           return;
@@ -554,11 +485,9 @@
         if (e.key === "m") btnMute.onclick();
       });
 
-      // ── Progress save (every 10s) ─────────
       function startProgressSave() {
         if (saveInterval) return;
         saveInterval = setInterval(() => saveProgress(), 10000);
-        // Page leave වුණත් save කරන්න
         window.addEventListener("beforeunload", saveProgress);
       }
 
@@ -577,9 +506,18 @@
           }
           await api.post("/api/watch/progress", body);
         } catch {
-          // Silent fail — user maybe logged out
+          // Silent fail
         }
       }
+
+      let timeout;
+      playerWrap.addEventListener("mousemove", () => {
+        playerWrap.classList.add("show-controls");
+        clearTimeout(timeout);
+        timeout = setTimeout(() => {
+          if (!video.paused) playerWrap.classList.remove("show-controls");
+        }, 3000);
+      });
 
       load();
     </script>

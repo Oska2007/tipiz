@@ -1,6 +1,6 @@
 // TIPIZ Worker — Main Entry Point (Final Release)
 // Security Headers + All API Routes (Steps 1 to 8)
-
+import * as vps from './api/vps.js';
 import * as auth from './api/auth.js';
 import * as setup from './api/setup.js';
 import * as settings from './api/settings.js';
@@ -68,6 +68,10 @@ const routes = [
   // 8. Watch (Player data & Progress)
   ['GET', '/api/watch/:type/:id', watch.getWatchInfo],
   ['POST', '/api/watch/progress', watch.saveProgress],
+  ['POST', '/api/vps/sync', vps.syncVideo],
+  ['POST', '/api/vps/assign', vps.assignVideoSource],
+  ['GET', '/api/vps/videos', vps.listVideoSources],
+  ['GET', '/api/vps/backup', vps.backupDatabase],
 
   // 9. User Dashboard
   ['GET', '/api/user/stats', user.getDashboardStats],

@@ -66,17 +66,23 @@ export async function getPublic(request, env, id) {
     profile_url: tmdb.profileUrl(c.profile_path),
   }));
 
+  // ── වීඩියෝ එක තියෙනවද බලන කොටස ──
   if (movie.video_id) {
     movie.video = await getOne(
       env, `SELECT id, kind, duration_seconds FROM videos WHERE id = ?`, movie.video_id
     );
+  } else if (movie.video_source_id) {
+    // අලුත් VPS Permanent ID එක තියෙනවා නම්
+    const vs = await getOne(env, `SELECT id, source_type FROM video_sources WHERE id = ?`, movie.video_source_id);
+    if (vs) {
+      movie.video = { id: vs.id, kind: 'mp4', duration_seconds: 0 };
+    }
   }
 
   return ok({ movie });
 }
 
 // POST /api/movies/import  (admin)
-// Body: { tmdb_id: 123 }
 export async function importFromTMDB(request, env) {
   const auth = await requireAdmin(request, env);
   if (auth.error) return auth.error;
@@ -160,7 +166,7 @@ export async function setStatus(request, env, id) {
   return ok({ message: `Movie ${status}` });
 }
 
-// GET /api/admin/movies  (admin) — drafts ද ඇතුළුව සියල්ල
+// GET /api/admin/movies  (admin)
 export async function listAdmin(request, env) {
   const auth = await requireAdmin(request, env);
   if (auth.error) return auth.error;
@@ -195,7 +201,6 @@ export async function getSimilar(request, env, id) {
 
   let rows = [];
 
-  // 1. Same-genre movies
   if (genres.length) {
     const conditions = genres.map(() => 'genres_json LIKE ?').join(' OR ');
     const params = genres.map((g) => `%"id":${g.id},"name"%`);
@@ -208,7 +213,6 @@ export async function getSimilar(request, env, id) {
     );
   }
 
-  // 2. Fallback: top-rated other movies (if less than 4 genre matches)
   if (rows.length < 4) {
     const excludeIds = [id, ...rows.map((r) => r.id)];
     const placeholders = excludeIds.map(() => '?').join(',');
@@ -242,7 +246,7 @@ export async function deleteMovie(request, env, id) {
   return ok({ message: 'Movie deleted' });
 }
 
-// POST /api/admin/movies/publish-drafts  (admin) — bulk publish
+// POST /api/admin/movies/publish-drafts  (admin)
 export async function publishAllDrafts(request, env) {
   const auth = await requireAdmin(request, env);
   if (auth.error) return auth.error;

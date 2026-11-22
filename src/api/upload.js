@@ -59,7 +59,7 @@ export async function listVideos(request, env) {
   });
 }
 
-// ── 3. Assign Video to Movie or Episode (Updated) ──
+// ── 3. Assign Video to Movie or Episode ──
 export async function assignVideo(request, env) {
   const auth = await requireAdmin(request, env);
   if (auth.error) return auth.error;
@@ -73,35 +73,57 @@ export async function assignVideo(request, env) {
   if ((!video_id && !r2_key) || !type || !target_id) return fail('Missing fields');
 
   let targetVideoId = video_id;
+  let targetVideoSourceId = null;
 
-  // r2_key එකක් එවලා තියෙනවා නම්, ඒක Database එකේ තියෙනවද බලලා නැත්නම් අලුතින් හදනවා
+  // R2 Key එකක් එවලා තියෙනවා නම්
   if (!targetVideoId && r2_key) {
-    let video = await getOne(env, 'SELECT id FROM videos WHERE r2_key = ?', r2_key);
-    if (!video) {
-      const title = r2_key.split('/').pop() || 'Cloudflare R2 Video';
-      targetVideoId = await insert(env,
-        `INSERT INTO videos (title, kind, r2_key) VALUES (?, 'mp4', ?)`,
-        title, r2_key
-      );
+    // 1. මුලින්ම බලමු මේක VPS එකෙන් හදපු එකක්ද කියලා (video_sources table)
+    const vpsVideo = await getOne(env, 'SELECT id FROM video_sources WHERE r2_key = ?', r2_key);
+    
+    if (vpsVideo) {
+      // ඔව්, මේක VPS එකෙන් හදපු එකක්. ඒ නිසා video_source_id එක පාවිච්චි කරමු.
+      targetVideoSourceId = vpsVideo.id;
     } else {
-      targetVideoId = video.id;
+      // 2. නැත්නම් පරණ විදිහට videos table එකේ තියෙනවද බලමු
+      let video = await getOne(env, 'SELECT id FROM videos WHERE r2_key = ?', r2_key);
+      if (!video) {
+        // ඒකත් නැත්නම් අලුතින් videos table එකට දාමු (පරණ විදිහට)
+        const title = r2_key.split('/').pop() || 'Cloudflare R2 Video';
+        targetVideoId = await insert(env,
+          `INSERT INTO videos (title, kind, r2_key) VALUES (?, 'mp4', ?)`,
+          title, r2_key
+        );
+      } else {
+        targetVideoId = video.id;
+      }
     }
   }
 
-  if (!targetVideoId) return fail('Video not found');
+  if (!targetVideoId && !targetVideoSourceId) return fail('Video not found');
 
+  // දැන් Database එක update කරමු
   if (type === 'movie') {
-    await run(env, 'UPDATE movies SET video_id = ?, updated_at = ? WHERE id = ?',
-      targetVideoId, new Date().toISOString(), target_id);
+    if (targetVideoSourceId) {
+      await run(env, 'UPDATE movies SET video_source_id = ?, video_id = NULL, updated_at = ? WHERE id = ?',
+        targetVideoSourceId, new Date().toISOString(), target_id);
+    } else {
+      await run(env, 'UPDATE movies SET video_id = ?, video_source_id = NULL, updated_at = ? WHERE id = ?',
+        targetVideoId, new Date().toISOString(), target_id);
+    }
   } else if (type === 'episode') {
-    await run(env, 'UPDATE episodes SET video_id = ? WHERE id = ?', targetVideoId, target_id);
+    if (targetVideoSourceId) {
+      await run(env, 'UPDATE episodes SET video_source_id = ?, video_id = NULL WHERE id = ?',
+        targetVideoSourceId, target_id);
+    } else {
+      await run(env, 'UPDATE episodes SET video_id = ?, video_source_id = NULL WHERE id = ?',
+        targetVideoId, target_id);
+    }
   } else {
     return fail('Invalid type');
   }
 
   return ok({ message: `Video assigned to ${type}` });
 }
-
 // ── 4. Delete Video ──
 export async function deleteVideo(request, env, id) {
   const auth = await requireAdmin(request, env);

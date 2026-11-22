@@ -7,8 +7,8 @@ import * as tmdb from '../lib/tmdb.js';
 function decorateTV(s) {
   return {
     ...s,
-    title: s.name, // Frontend එකේ Card එකට title ඕන නිසා
-    release_date: s.first_air_date, // Frontend එකට year එක ඕන නිසා
+    title: s.name, 
+    release_date: s.first_air_date, 
     media_type: 'tv',
     poster_url: tmdb.posterUrl(s.poster_path),
     backdrop_url: tmdb.backdropUrl(s.backdrop_path),
@@ -135,7 +135,7 @@ export async function importFromTMDB(request, env) {
   // Seasons import
   let seasonsImported = 0;
   for (const s of data.seasons || []) {
-    if (s.season_number === 0) continue; // specials skip
+    if (s.season_number === 0) continue;
     const existingSeason = await getOne(
       env, 'SELECT id FROM seasons WHERE series_id = ? AND season_number = ?',
       seriesId, s.season_number
@@ -262,6 +262,8 @@ export async function listEpisodes(request, env, id) {
 
   const episodes = rows.map((e) => ({
     ...e,
+    // Frontend එකේ පරණ කේතය වැඩ කරන්න video_id එකට අලුත් ID එක දාලා යවනවා
+    video_id: e.video_id || (e.video_source_id ? e.video_source_id : null),
     still_url: tmdb.stillUrl(e.still_path),
   }));
 
@@ -323,7 +325,7 @@ export async function listAdmin(request, env) {
   });
 }
 
-// GET /api/admin/tv/:id  (admin - drafts ඇතුළුව)
+// GET /api/admin/tv/:id  (admin)
 export async function getAdminSeries(request, env, id) {
   const auth = await requireAdmin(request, env);
   if (auth.error) return auth.error;
