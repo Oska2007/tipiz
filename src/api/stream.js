@@ -35,9 +35,29 @@ async function isPublicMediaKey(env, key) {
              SELECT 1 FROM episodes e JOIN tv_series t ON t.id = e.series_id
              WHERE t.status = 'published' AND e.video_source_id = vs.id
            )
+         OR EXISTS (
+           SELECT 1 FROM videos v JOIN movies m ON m.video_id = v.id
+           WHERE m.status = 'published' AND v.r2_key = vs.r2_key
+         )
+         OR EXISTS (
+           SELECT 1 FROM videos v
+           JOIN episodes e ON e.video_id = v.id
+           JOIN tv_series t ON t.id = e.series_id
+           WHERE t.status = 'published' AND v.r2_key = vs.r2_key
+         )
+         )
+     )
+     OR EXISTS (
+         SELECT 1 FROM subtitles s
+         WHERE s.r2_key = ? AND (
+           EXISTS (SELECT 1 FROM movies m WHERE m.status = 'published' AND m.video_id = s.video_id)
+           OR EXISTS (
+             SELECT 1 FROM episodes e JOIN tv_series t ON t.id = e.series_id
+             WHERE t.status = 'published' AND e.video_id = s.video_id
+           )
          )
      )`,
-    key, key, key, key, key, key
+    key, key, key, key, key, key, key
   );
   if (result) return true;
 
@@ -86,6 +106,9 @@ export async function stream(request, env) {
   // CORS headers (browser එකට වීඩියෝ ගන්න අවසර දෙන්න)
   const headers = new Headers();
   object.writeHttpMetadata(headers);
+  if (/\.vtt$/i.test(key)) {
+    headers.set('Content-Type', 'text/vtt; charset=utf-8');
+  }
   headers.set('etag', object.httpEtag);
   headers.set('Accept-Ranges', 'bytes');
   headers.set('Access-Control-Allow-Origin', '*');

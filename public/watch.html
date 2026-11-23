@@ -957,8 +957,8 @@
                   class="control-btn"
                   id="btn-settings"
                   type="button"
-                  aria-label="Stream quality"
-                  title="Quality"
+                  aria-label="Player settings"
+                  title="Settings"
                   hidden
                 >
                   <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -968,11 +968,17 @@
                   </svg>
                 </button>
                 <div class="settings-panel" id="settings-panel">
-                  <p class="settings-title">Stream quality</p>
+                  <p class="settings-title">Playback settings</p>
                   <div class="setting-row" id="quality-row" hidden>
                     <label for="quality-select">Quality</label
                     ><select class="setting-select" id="quality-select">
                       <option value="-1">Auto</option>
+                    </select>
+                  </div>
+                  <div class="setting-row" id="subtitle-row" hidden>
+                    <label for="subtitle-select">Subtitles</label>
+                    <select class="setting-select" id="subtitle-select">
+                      <option value="-1">Off</option>
                     </select>
                   </div>
                   <p class="settings-hint">
@@ -1116,6 +1122,8 @@
       const settingsPanel = document.getElementById("settings-panel");
       const qualitySelect = document.getElementById("quality-select");
       const qualityRow = document.getElementById("quality-row");
+      const subtitleSelect = document.getElementById("subtitle-select");
+      const subtitleRow = document.getElementById("subtitle-row");
 
       let hls = null;
       let saveInterval = null;
@@ -1214,41 +1222,75 @@
 
       function addSubtitleTracks(subtitles) {
         video.querySelectorAll("track").forEach((track) => track.remove());
-        if (!Array.isArray(subtitles) || subtitles.length === 0) return;
+        subtitleSelect.innerHTML = '<option value="-1">Off</option>';
+        const availableSubtitles = Array.isArray(subtitles)
+          ? subtitles.filter(
+              (subtitle) =>
+                subtitle &&
+                typeof subtitle.url === "string" &&
+                subtitle.url.length > 0,
+            )
+          : [];
+        subtitleRow.hidden = false;
+        if (availableSubtitles.length === 0) {
+          const unavailableOption = document.createElement("option");
+          unavailableOption.disabled = true;
+          unavailableOption.textContent = "No subtitles available";
+          subtitleSelect.appendChild(unavailableOption);
+          updateSettingsButtonVisibility();
+          return;
+        }
 
-        subtitles.forEach((subtitle) => {
+        let defaultIndex = availableSubtitles.findIndex(
+          (subtitle) => subtitle.is_default,
+        );
+        if (defaultIndex === -1) {
+          defaultIndex = availableSubtitles.findIndex(
+            (subtitle) =>
+              String(subtitle.language || "").toLowerCase().split("-")[0] ===
+                "si" ||
+              String(subtitle.label || "").toLowerCase().includes("sinhala"),
+          );
+        }
+
+        availableSubtitles.forEach((subtitle, index) => {
           const track = document.createElement("track");
           track.kind = "subtitles";
           track.label = subtitle.label || subtitle.language || "Subtitle";
           track.srclang = subtitle.language || "en";
           track.src = subtitle.url;
+          track.default = index === defaultIndex;
           video.appendChild(track);
+
+          const option = document.createElement("option");
+          option.value = String(index);
+          option.textContent = track.label;
+          subtitleSelect.appendChild(option);
         });
+        subtitleSelect.value = String(defaultIndex);
+        updateSettingsButtonVisibility();
+      }
+
+      function selectSubtitle(index) {
+        const tracks = video.querySelectorAll("track");
+        tracks.forEach((element, trackIndex) => {
+          element.track.mode = trackIndex === index ? "showing" : "disabled";
+        });
+        subtitleSelect.value = String(index);
       }
 
       function enableDefaultSubtitle() {
-        const tracks = video.textTracks;
-        if (!tracks || !tracks.length) return;
-        let defaultIndex = -1;
-        for (let index = 0; index < tracks.length; index++) {
-          const track = tracks[index];
-          const label = `${track.label} ${track.language}`.toLowerCase();
-          track.mode = "disabled";
-          if (
-            defaultIndex === -1 &&
-            (track.language.toLowerCase() === "si" || label.includes("sinhala"))
-          )
-            defaultIndex = index;
-        }
-        if (defaultIndex >= 0) {
-          tracks[defaultIndex].mode = "showing";
-        }
+        selectSubtitle(Number(subtitleSelect.value));
+      }
+
+      function updateSettingsButtonVisibility() {
+        settingsButton.hidden = qualityRow.hidden && subtitleRow.hidden;
       }
 
       function setHlsQualityOptions() {
         if (!hls || !hls.levels || hls.levels.length < 2) {
           qualityRow.hidden = true;
-          settingsButton.hidden = true;
+          updateSettingsButtonVisibility();
           return;
         }
         qualitySelect.innerHTML = '<option value="-1">Auto</option>';
@@ -1264,7 +1306,7 @@
           qualitySelect.appendChild(option);
         });
         qualityRow.hidden = qualitySelect.options.length <= 2;
-        settingsButton.hidden = qualityRow.hidden;
+        updateSettingsButtonVisibility();
         qualitySelect.value = "-1";
       }
 
@@ -1496,6 +1538,9 @@
             ? "Auto quality"
             : `${qualitySelect.selectedOptions[0].textContent} quality`,
         );
+      });
+      subtitleSelect.addEventListener("change", () => {
+        selectSubtitle(Number(subtitleSelect.value));
       });
       settingsButton.addEventListener("click", () => toggleSettings());
 

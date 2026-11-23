@@ -3,6 +3,15 @@ import { getOne, getAll, run } from '../lib/db.js';
 import { getSession } from '../middleware/auth.js';
 import { requireCSRF } from '../middleware/auth.js';
 
+function streamUrlForKey(key) {
+  return `/stream/${key.split('/').map(encodeURIComponent).join('/')}`;
+}
+
+async function subtitleTrackIfPresent(env, { key, ...subtitle }) {
+  if (!(await env.R2.head(key))) return null;
+  return { ...subtitle, url: streamUrlForKey(key) };
+}
+
 // GET /api/watch/movie/:id
 // GET /api/watch/episode/:id
 export async function getWatchInfo(request, env) {
@@ -71,6 +80,13 @@ export async function getWatchInfo(request, env) {
         : `/stream/${video.r2_key}`;
       videoKind = video.kind;
       durationSeconds = video.duration_seconds || 0;
+
+      const matchingSource = await getOne(
+        env,
+        'SELECT id FROM video_sources WHERE r2_key = ?',
+        video.r2_key
+      );
+      if (matchingSource) videoSourceId = matchingSource.id;
     }
   }
 
@@ -81,16 +97,48 @@ export async function getWatchInfo(request, env) {
   // 3. Subtitles (අලුත් ක්‍රමය - R2 එකේ තියෙන වෙනම .vtt ෆයිල්ස්)
   let subtitles = [];
   if (videoSourceId) {
-    subtitles.push({
-      label: 'Sinhala',
-      language: 'si',
-      url: `/stream/subtitles/${videoSourceId}_sin.vtt`
-    });
-    subtitles.push({
-      label: 'English',
-      language: 'en',
-      url: `/stream/subtitles/${videoSourceId}_eng.vtt`
-    });
+    const sourceSubtitles = [
+      {
+        label: 'Sinhala',
+        language: 'si',
+        is_default: true,
+        key: `subtitles/${videoSourceId}_sin.vtt`,
+      },
+      {
+        label: 'English',
+        language: 'en',
+        is_default: false,
+        key: `subtitles/${videoSourceId}_eng.vtt`,
+      },
+    ];
+    const tracks = await Promise.all(
+      sourceSubtitles.map((subtitle) => subtitleTrackIfPresent(env, subtitle))
+    );
+    subtitles.push(...tracks.filter(Boolean));
+  }
+
+  if (media.video_id) {
+    const subtitleRows = await getAll(
+      env,
+      `SELECT label, language, r2_key, is_default
+       FROM subtitles
+       WHERE video_id = ?
+       ORDER BY is_default DESC, id ASC`,
+      media.video_id
+    );
+    const registeredSubtitles = subtitleRows.filter(
+      (subtitle) => typeof subtitle.r2_key === 'string' && /\.vtt$/i.test(subtitle.r2_key)
+    );
+    const registeredTracks = await Promise.all(
+      registeredSubtitles.map((subtitle) => subtitleTrackIfPresent(env, {
+        key: subtitle.r2_key,
+        label: subtitle.label || subtitle.language || 'Subtitle',
+        language: subtitle.language || 'en',
+        is_default: Boolean(subtitle.is_default),
+      }))
+    );
+    const availableRegisteredTracks = registeredTracks.filter(Boolean);
+    subtitles.push(...availableRegisteredTracks);
   }
 
   // 4. Resume (කලින් නැවැත්තුව තැන)
