@@ -5,6 +5,7 @@ import * as auth from './api/auth.js';
 import * as setup from './api/setup.js';
 import * as settings from './api/settings.js';
 import * as admin from './api/admin.js';
+import * as exportApi from './api/export.js';
 import * as tmdbApi from './api/tmdb.js';
 import * as movies from './api/movies.js';
 import * as tv from './api/tv.js';
@@ -31,6 +32,8 @@ const routes = [
 
   // 3. Admin Dashboard & Settings
   ['GET', '/api/admin/dashboard', admin.dashboard],
+  ['GET', '/api/admin/export/database', exportApi.databaseBackup],
+  ['GET', '/api/admin/export/subtitles', exportApi.subtitleArchive],
   ['GET', '/api/settings', settings.getSettings],
   ['POST', '/api/settings', settings.updateSettings],
 

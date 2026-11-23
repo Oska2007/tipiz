@@ -46,6 +46,22 @@
             >
           </div>
         </div>
+
+        <div class="panel">
+          <h2>Download backups</h2>
+          <p style="color: var(--muted); margin: 0 0 14px">
+            Download a restorable SQL backup with the database schema and data, or download
+            all VTT subtitle files in one ZIP.
+          </p>
+          <div style="display: flex; gap: 12px; flex-wrap: wrap">
+            <a class="btn-admin secondary" href="/api/admin/export/database">
+              Download full database backup (.sql)
+            </a>
+            <a class="btn-admin secondary" href="/api/admin/export/subtitles">
+              Download all subtitles (.zip)
+            </a>
+          </div>
+        </div>
       </main>
     </div>
 
