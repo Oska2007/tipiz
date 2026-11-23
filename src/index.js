@@ -126,6 +126,7 @@ export default {
       "default-src 'self'; " +
       "img-src 'self' data: https://image.tmdb.org https://i.ytimg.com; " +
       "media-src 'self' blob: data: https://cdn.jsdelivr.net; " +
+      "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net *; " + // Ads සඳහා * එකතු කළා
       "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; " +
       "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; " +
       "frame-src 'self' https://www.youtube.com; " +

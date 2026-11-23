@@ -275,6 +275,7 @@ export async function listEpisodes(request, env, id) {
     // Frontend එකේ පරණ කේතය වැඩ කරන්න video_id එකට අලුත් ID එක දාලා යවනවා
     video_id: e.video_id || (e.video_source_id ? e.video_source_id : null),
     still_url: tmdb.stillUrl(e.still_path),
+    still_large_url: tmdb.stillUrl(e.still_path, 'w780'),
   }));
 
   return ok({ episodes });

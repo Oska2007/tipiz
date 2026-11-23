@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#080b14" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="TIPIZ" />
+    <title>Episode — TIPIZ</title>
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="192x192"
+      href="/icons/icon-192.png"
+    />
+    <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+    <link rel="stylesheet" href="/css/style.css" />
+    <script src="/js/pwa.js" defer></script>
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <a href="/" class="site-logo">TIPIZ</a>
+        <nav class="site-nav">
+          <a href="/browse.html?type=movie">Movies</a>
+          <a href="/browse.html?type=tv" class="active">TV Series</a>
+        </nav>
+        <div class="nav-tools">
+          <button
+            type="button"
+            class="nav-search-toggle"
+            id="nav-search-toggle"
+            aria-label="Search by title"
+            aria-expanded="false"
+            aria-controls="nav-search-form"
+            title="Search"
+          >
+            <svg
+              width="20"
+              height="20"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              viewBox="0 0 24 24"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <circle cx="11" cy="11" r="7"></circle>
+              <path d="m20 20-4-4"></path>
+            </svg>
+          </button>
+          <a
+            href="/search.html"
+            class="nav-filter-toggle"
+            aria-label="Filters"
+            title="Filters"
+          >
+            <svg
+              width="18"
+              height="18"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              viewBox="0 0 24 24"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <line x1="4" y1="6" x2="20" y2="6"></line>
+              <circle cx="9" cy="6" r="2"></circle>
+              <line x1="4" y1="12" x2="20" y2="12"></line>
+              <circle cx="15" cy="12" r="2"></circle>
+              <line x1="4" y1="18" x2="20" y2="18"></line>
+              <circle cx="11" cy="18" r="2"></circle>
+            </svg>
+          </a>
+        </div>
+        <form id="nav-search-form" class="nav-search-form" role="search" hidden>
+          <div class="nav-search-input-row">
+            <input
+              type="search"
+              name="q"
+              placeholder="Search movies & TV..."
+              aria-label="Search by title"
+              autocomplete="off"
+            />
+            <button type="submit" aria-label="Search" title="Search">
+              <svg
+                width="18"
+                height="18"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                viewBox="0 0 24 24"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <circle cx="11" cy="11" r="7.5"></circle>
+                <path d="m16.5 16.5 4 4"></path>
+              </svg>
+              <span>Search</span>
+            </button>
+          </div>
+          <a class="nav-search-advanced" href="/search.html"
+            >Advanced filters</a
+          >
+        </form>
+        <div class="nav-auth" id="nav-auth"></div>
+      </div>
+    </header>
+
+    <main id="episode-page">
+      <div
+        class="container"
+        style="padding: 60px 20px; text-align: center; color: var(--muted)"
+      >
+        Loading episode...
+      </div>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container footer-main">
+        <div>
+          <a
+            href="/"
+            class="site-logo"
+            style="margin-bottom: 12px; display: inline-block"
+            >TIPIZ</a
+          >
+          <p
+            style="
+              font-size: 13px;
+              color: var(--muted);
+              line-height: 1.7;
+              max-width: 340px;
+            "
+          >
+            Watch your favourite movies and TV series. High quality streaming on
+            any device.
+          </p>
+        </div>
+        <div>
+          <h4>Browse</h4>
+          <a href="/browse.html?type=movie">Movies</a>
+          <a href="/browse.html?type=tv">TV Series</a>
+          <a href="/dashboard.html">My Dashboard</a>
+        </div>
+        <div>
+          <h4>Account</h4>
+          <a href="/login.html">Sign in</a>
+          <a href="/register.html">Create account</a>
+        </div>
+      </div>
+      <div class="container">
+        <div class="footer-bottom">
+          <div class="tmdb-attribution">
+            Movie &amp; TV metadata provided by <strong>TMDB</strong>. Not
+            endorsed by TMDB.
+          </div>
+          <div style="margin-top: 8px">© TIPIZ — All rights reserved.</div>
+        </div>
+      </div>
+    </footer>
+
+    <script type="module" src="/js/api.js"></script>
+    <script type="module">
+      import { esc, initPage, placeholderPoster } from "/js/app.js";
+
+      const { api } = window.tipiz;
+      const page = document.getElementById("episode-page");
+      const params = new URLSearchParams(window.location.search);
+      const episodeId = params.get("id");
+      const seriesId = params.get("series");
+      const seasonParam = params.get("season");
+      const seasonNumber = Number(seasonParam);
+
+      initPage();
+
+      function showError(message) {
+        const backLink = seriesId
+          ? `<a href="/tv.html?id=${encodeURIComponent(seriesId)}" class="btn-nav">← Back to Series</a>`
+          : `<a href="/browse.html?type=tv" class="btn-nav">← Browse TV Series</a>`;
+        page.innerHTML = `
+          <div class="container">
+            <div class="empty-state">
+              <h3>Episode not found</h3>
+              <p>${esc(message)}</p>
+              <p style="margin-top:20px">${backLink}</p>
+            </div>
+          </div>`;
+      }
+
+      function episodeUrl(episode) {
+        return `/episode.html?id=${encodeURIComponent(episode.id)}&series=${encodeURIComponent(seriesId)}&season=${encodeURIComponent(seasonNumber)}`;
+      }
+
+      function formatDate(value) {
+        if (!value) return "";
+        const date = new Date(`${value}T00:00:00`);
+        return Number.isNaN(date.getTime())
+          ? value
+          : date.toLocaleDateString(undefined, {
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            });
+      }
+
+      async function loadEpisode() {
+        if (
+          !episodeId ||
+          !seriesId ||
+          !seasonParam ||
+          !Number.isInteger(seasonNumber) ||
+          seasonNumber < 0
+        ) {
+          showError("The episode link is missing valid episode details.");
+          return;
+        }
+
+        try {
+          const [{ series }, { episodes }] = await Promise.all([
+            api.get(`/api/tv/${encodeURIComponent(seriesId)}`),
+            api.get(
+              `/api/tv/${encodeURIComponent(seriesId)}/episodes?season=${encodeURIComponent(seasonNumber)}`,
+            ),
+          ]);
+          const season = (series.seasons || []).find(
+            (item) => Number(item.season_number) === seasonNumber,
+          );
+          const episodeIndex = (episodes || []).findIndex(
+            (item) => String(item.id) === episodeId,
+          );
+          const episode = episodes?.[episodeIndex];
+
+          if (
+            !season ||
+            !episode ||
+            String(episode.season_id) !== String(season.id)
+          ) {
+            showError(
+              "This episode could not be found in the selected season.",
+            );
+            return;
+          }
+
+          const episodeName = episode.name || "Untitled Episode";
+          const image =
+            episode.still_large_url ||
+            episode.still_url ||
+            series.backdrop_url ||
+            series.poster_url ||
+            placeholderPoster();
+          const hasVideo = Boolean(episode.video_id);
+          const date = formatDate(episode.air_date);
+          const runtime = Number(episode.runtime);
+          const nextEpisode = episodes[episodeIndex + 1];
+          const watchUrl = `/watch.html?type=episode&id=${encodeURIComponent(episode.id)}`;
+
+          document.title = `${episodeName} — ${series.name} — TIPIZ`;
+          page.innerHTML = `
+            <section class="episode-detail-shell">
+              <div class="container">
+                <div class="episode-detail-grid">
+                  <div class="episode-detail-image-wrap">
+                    <img class="episode-detail-image" src="${esc(image)}" alt="${esc(episodeName)}" />
+                  </div>
+                  <div class="episode-detail-info">
+                    <p class="episode-detail-series">${esc(series.name)}</p>
+                    <h1 class="episode-detail-title">${esc(episodeName)}</h1>
+                    <div class="episode-detail-meta">
+                      <span>Season ${seasonNumber} · Episode ${episode.episode_number}</span>
+                      ${date ? `<span>${esc(date)}</span>` : ""}
+                      ${Number.isFinite(runtime) && runtime > 0 ? `<span>${runtime} min</span>` : ""}
+                    </div>
+                    <p class="episode-detail-overview">${esc(episode.overview || "No description is available for this episode.")}</p>
+                    <div class="episode-detail-actions">
+                      ${
+                        hasVideo
+                          ? `<a href="${watchUrl}" class="btn-hero btn-hero-primary">▶ Watch Now</a>`
+                          : `<span class="episode-unavailable">Video coming soon</span>`
+                      }
+                    </div>
+                  </div>
+                </div>
+                ${
+                  nextEpisode
+                    ? `<div class="episode-detail-next-row"><a class="episode-next-button" href="${episodeUrl(nextEpisode)}">Next Episode <span aria-hidden="true">→</span></a></div>`
+                    : ""
+                }
+              </div>
+            </section>`;
+        } catch (error) {
+          showError(error.message || "Unable to load episode details.");
+        }
+      }
+
+      loadEpisode();
+    </script>
+    <!-- Smart Ads Script -->
+    <script src="/js/ads.js"></script>
+  </body>
+</html>

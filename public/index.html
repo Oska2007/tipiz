@@ -5,7 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>TIPIZ — Watch Movies & TV Series</title>
     <meta name="description" content="TIPIZ — Stream movies and TV series." />
+    <meta name="theme-color" content="#080b14" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="TIPIZ" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="192x192"
+      href="/icons/icon-192.png"
+    />
+    <link rel="apple-touch-icon" href="/icons/icon-192.png" />
     <link rel="stylesheet" href="/css/style.css" />
+    <script src="/js/pwa.js" defer></script>
   </head>
   <body>
     <!-- ═══════════ NAVBAR ═══════════ -->
@@ -27,13 +39,37 @@
             aria-controls="nav-search-form"
             title="Search"
           >
-            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+            <svg
+              width="20"
+              height="20"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              viewBox="0 0 24 24"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
               <circle cx="11" cy="11" r="7"></circle>
               <path d="m20 20-4-4"></path>
             </svg>
           </button>
-          <a href="/search.html" class="nav-filter-toggle" aria-label="Filters" title="Filters">
-            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <a
+            href="/search.html"
+            class="nav-filter-toggle"
+            aria-label="Filters"
+            title="Filters"
+          >
+            <svg
+              width="18"
+              height="18"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              viewBox="0 0 24 24"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
               <line x1="4" y1="6" x2="20" y2="6"></line>
               <circle cx="9" cy="6" r="2"></circle>
               <line x1="4" y1="12" x2="20" y2="12"></line>
@@ -45,16 +81,34 @@
         </div>
         <form id="nav-search-form" class="nav-search-form" role="search" hidden>
           <div class="nav-search-input-row">
-            <input type="search" name="q" placeholder="Search movies & TV..." aria-label="Search by title" autocomplete="off" />
+            <input
+              type="search"
+              name="q"
+              placeholder="Search movies & TV..."
+              aria-label="Search by title"
+              autocomplete="off"
+            />
             <button type="submit" aria-label="Search" title="Search">
-              <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <svg
+                width="18"
+                height="18"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                viewBox="0 0 24 24"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
                 <circle cx="11" cy="11" r="7.5"></circle>
                 <path d="m16.5 16.5 4 4"></path>
               </svg>
               <span>Search</span>
             </button>
           </div>
-          <a class="nav-search-advanced" href="/search.html">Advanced filters</a>
+          <a class="nav-search-advanced" href="/search.html"
+            >Advanced filters</a
+          >
         </form>
 
         <div class="nav-auth" id="nav-auth">
@@ -70,7 +124,7 @@
 
     <!-- ═══════════ MAIN CONTENT ROWS ═══════════ -->
     <div class="container">
-      <!-- 1. Trending Now (6 Cards, No View All) -->
+      <!-- 1. Trending Now (6 movies and 6 TV series) -->
       <section class="section row-section" id="s-trending">
         <div class="section-header">
           <h2>Trending Now</h2>
@@ -78,7 +132,7 @@
         <div class="row-scroll" id="r-trending"></div>
       </section>
 
-      <!-- 2. Movies (6 Cards, View All) -->
+      <!-- 2. Movies (12 cards with horizontal scrolling) -->
       <section class="section row-section" id="s-movies">
         <div class="section-header">
           <h2>Movies</h2>
@@ -87,7 +141,7 @@
         <div class="row-scroll" id="r-movies"></div>
       </section>
 
-      <!-- 3. TV Series (6 Cards, View All) -->
+      <!-- 3. TV Series (12 cards with horizontal scrolling) -->
       <section class="section row-section" id="s-series">
         <div class="section-header">
           <h2>TV Series</h2>
@@ -223,14 +277,17 @@
             }, 5000);
           }
 
-          // ── 2. පහළ තියෙන Rows (කාඩ්පත් 6 බැගින්) ──
-          const trending6 = (data.popular || []).slice(0, 6);
-          const movies6 = (data.trending || []).slice(0, 6);
-          const series6 = (data.popular_series || []).slice(0, 6);
+          // ── 2. Homepage card rows ──
+          const trending12 = [
+            ...(data.popular || []).slice(0, 6),
+            ...(data.popular_series || []).slice(0, 6),
+          ];
+          const movies12 = (data.trending || []).slice(0, 12);
+          const series12 = (data.popular_series || []).slice(0, 12);
 
-          renderRow(document.getElementById("r-trending"), trending6);
-          renderRow(document.getElementById("r-movies"), movies6);
-          renderRow(document.getElementById("r-series"), series6);
+          renderRow(document.getElementById("r-trending"), trending12);
+          renderRow(document.getElementById("r-movies"), movies12);
+          renderRow(document.getElementById("r-series"), series12);
         } catch (err) {
           console.error("Failed to load homepage:", err);
         }
@@ -238,5 +295,7 @@
 
       loadHome();
     </script>
+    <!-- Smart Ads Script -->
+    <script src="/js/ads.js"></script>
   </body>
 </html>
