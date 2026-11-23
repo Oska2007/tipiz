@@ -194,6 +194,21 @@ async function handleRequest(request, env, ctx) {
     return fail('API route not found', 404);
   }
 
+  if (method === 'GET') {
+    const detailRoute = path.match(/^\/(movie|tv|episode)\/([a-z0-9-]+)$/i);
+    const slug = detailRoute && detailRoute[2];
+    const idMatch = slug && slug.match(/-(\d+)$/);
+
+    if (detailRoute && idMatch) {
+      url.pathname = `/${detailRoute[1]}`;
+      url.searchParams.set('id', idMatch[1]);
+      return env.ASSETS.fetch(new Request(url, {
+        method: 'GET',
+        headers: request.headers,
+      }));
+    }
+  }
+
   // ─── 4. Static Files (Frontend) ───────────────
   return env.ASSETS.fetch(request);
 }

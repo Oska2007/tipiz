@@ -3,6 +3,16 @@ import { getOne, getAll, run } from '../lib/db.js';
 import { requireUser, requireCSRF } from '../middleware/auth.js';
 import * as tmdb from '../lib/tmdb.js';
 
+function slugify(value) {
+  return String(value || '')
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/&/g, ' and ')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'title';
+}
+
 // ── 1. Dashboard Data (Counts) ──
 export async function getDashboardStats(request, env) {
   const auth = await requireUser(request, env);
@@ -177,7 +187,9 @@ export async function getHistory(request, env) {
         progress_percent: r.duration_seconds ? Math.round((r.position_seconds / r.duration_seconds) * 100) : 0,
         completed: r.completed,
         watch_url: isMovie ? `/watch.html?type=movie&id=${r.media_id}` : `/watch.html?type=episode&id=${r.media_id}`,
-        details_url: isMovie ? `/movie.html?id=${r.media_id}` : `/tv.html?id=${r.series_id}`
+        details_url: isMovie
+          ? `/movie/${slugify(r.m_title)}-${encodeURIComponent(r.media_id)}`
+          : `/tv/${slugify(r.t_title)}-${encodeURIComponent(r.series_id)}`
       };
     })
   });

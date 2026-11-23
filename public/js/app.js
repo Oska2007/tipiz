@@ -24,13 +24,32 @@ export function languageName(code) {
   }
 }
 
+export function slugify(value) {
+  return String(value || '')
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/&/g, ' and ')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'title';
+}
+
+export function contentIdFromPath(pathname) {
+  const match = String(pathname || '').match(/^\/(?:movie|tv|episode)\/[a-z0-9-]+-(\d+)$/i);
+  return match ? match[1] : null;
+}
+
+export function detailUrl(type, title, id) {
+  return `/${type}/${slugify(title)}-${encodeURIComponent(id)}`;
+}
+
 // ── Movie card ────────────────────────────────
 export function movieCard(m) {
   const title = esc(m.title || 'Untitled');
   const year = m.release_date ? String(m.release_date).slice(0, 4) : '';
   const rating = m.vote_average ? Number(m.vote_average).toFixed(1) : '—';
   const poster = m.poster_url || placeholderPoster();
-  const href = (m.media_type === 'tv' ? '/tv.html?id=' : '/movie.html?id=') + m.id;
+  const href = detailUrl(m.media_type === 'tv' ? 'tv' : 'movie', m.title, m.id);
   const badge = m.media_type === 'tv'
     ? '<span class="card-badge">TV</span>'
     : '';

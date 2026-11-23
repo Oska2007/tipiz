@@ -197,12 +197,17 @@
         esc,
         placeholderPoster,
         languageName,
+        contentIdFromPath,
+        detailUrl,
+        slugify,
       } from "/js/app.js";
       const { api } = window.tipiz;
 
       initPage();
 
-      const id = new URLSearchParams(window.location.search).get("id");
+      const id =
+        new URLSearchParams(window.location.search).get("id") ||
+        contentIdFromPath(window.location.pathname);
       if (!id) {
         document.getElementById("page").innerHTML =
           '<div class="container"><div class="empty-state"><h3>Series not found</h3></div></div>';
@@ -214,6 +219,10 @@
         try {
           const { series } = await api.get(`/api/tv/${id}`);
           document.title = `${series.name} — TIPIZ`;
+          const canonicalUrl = detailUrl("tv", series.name, series.id);
+          if (window.location.pathname !== canonicalUrl) {
+            history.replaceState(null, "", canonicalUrl);
+          }
 
           const year = series.first_air_date
             ? series.first_air_date.slice(0, 4)
@@ -288,10 +297,10 @@
               tab.addEventListener("click", () => {
                 tabs.forEach((t) => t.classList.remove("active"));
                 tab.classList.add("active");
-                loadEpisodes(id, tab.dataset.seasonNum);
+                loadEpisodes(id, tab.dataset.seasonNum, series.name);
               });
             });
-            loadEpisodes(id, seasons[0].season_number);
+            loadEpisodes(id, seasons[0].season_number, series.name);
           }
         } catch (err) {
           document.getElementById("page").innerHTML =
@@ -299,7 +308,7 @@
         }
       }
 
-      async function loadEpisodes(seriesId, seasonNumber) {
+      async function loadEpisodes(seriesId, seasonNumber, seriesName) {
         const wrap = document.getElementById("episodes-wrap");
         try {
           const { episodes } = await api.get(
@@ -316,7 +325,8 @@
         ${episodes
           .map((ep) => {
             const hasVideo = !!ep.video_id;
-            const detailsUrl = `/episode.html?id=${encodeURIComponent(ep.id)}&series=${encodeURIComponent(seriesId)}&season=${encodeURIComponent(seasonNumber)}`;
+            const seriesRef = `${slugify(seriesName)}-${encodeURIComponent(seriesId)}`;
+            const detailsUrl = `${detailUrl("episode", ep.name || `Episode ${ep.episode_number}`, ep.id)}?series=${encodeURIComponent(seriesRef)}&season=${encodeURIComponent(seasonNumber)}`;
 
             return `
             <a class="episode-item" href="${detailsUrl}">

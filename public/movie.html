@@ -198,12 +198,16 @@
         esc,
         placeholderPoster,
         languageName,
+        contentIdFromPath,
+        detailUrl,
       } from "/js/app.js";
       const { api } = window.tipiz;
 
       initPage();
 
-      const id = new URLSearchParams(window.location.search).get("id");
+      const id =
+        new URLSearchParams(window.location.search).get("id") ||
+        contentIdFromPath(window.location.pathname);
       if (!id) {
         document.getElementById("page").innerHTML =
           '<div class="container"><div class="empty-state"><h3>Movie not found</h3></div></div>';
@@ -219,6 +223,10 @@
           ]);
 
           document.title = `${movie.title} — TIPIZ`;
+          const canonicalUrl = detailUrl("movie", movie.title, movie.id);
+          if (window.location.pathname !== canonicalUrl) {
+            history.replaceState(null, "", canonicalUrl);
+          }
 
           const year = movie.release_date ? movie.release_date.slice(0, 4) : "";
           const language = languageName(movie.original_language);

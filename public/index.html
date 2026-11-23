@@ -18,8 +18,134 @@
     <link rel="apple-touch-icon" href="/icons/icon-192.png" />
     <link rel="stylesheet" href="/css/style.css" />
     <script src="/js/pwa.js" defer></script>
+    <style>
+      .home-loader {
+        position: fixed;
+        z-index: 9999;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+        background: radial-gradient(circle at 50% 42%, #17233c 0, #080b14 62%);
+        opacity: 1;
+        visibility: visible;
+        transition:
+          opacity 0.35s ease,
+          visibility 0.35s ease;
+      }
+      .home-loader-hidden {
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+      }
+      .home-loader-content {
+        width: min(340px, 100%);
+        text-align: center;
+      }
+      .home-loader-logo {
+        color: #f8fafc;
+        font-size: clamp(36px, 9vw, 50px);
+        font-weight: 900;
+        letter-spacing: 0.2em;
+        padding-left: 0.2em;
+        text-shadow: 0 0 28px rgba(79, 140, 255, 0.5);
+        animation: home-loader-pulse 1.8s ease-in-out infinite;
+      }
+      .home-loader-spinner {
+        position: relative;
+        width: 48px;
+        height: 48px;
+        margin: 26px auto 18px;
+        border: 3px solid rgba(255, 255, 255, 0.12);
+        border-top-color: var(--accent-1);
+        border-right-color: rgba(79, 140, 255, 0.55);
+        border-radius: 50%;
+        animation: home-loader-spin 0.85s linear infinite;
+      }
+      .home-loader-spinner::after {
+        position: absolute;
+        inset: 9px;
+        border: 2px solid rgba(255, 255, 255, 0.12);
+        border-bottom-color: #f8fafc;
+        border-radius: 50%;
+        content: "";
+        animation: home-loader-spin 0.65s linear infinite reverse;
+      }
+      .home-loader-message {
+        color: var(--muted);
+        font-size: 13px;
+        letter-spacing: 0.04em;
+      }
+      .home-loader-progress {
+        width: 156px;
+        height: 3px;
+        margin: 16px auto 0;
+        overflow: hidden;
+        border-radius: 3px;
+        background: rgba(255, 255, 255, 0.1);
+      }
+      .home-loader-progress span {
+        display: block;
+        width: 38%;
+        height: 100%;
+        border-radius: inherit;
+        background: var(--accent-1);
+        animation: home-loader-progress 1.2s ease-in-out infinite;
+      }
+      @keyframes home-loader-spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      @keyframes home-loader-pulse {
+        50% {
+          opacity: 0.7;
+          transform: scale(0.98);
+        }
+      }
+      @keyframes home-loader-progress {
+        from {
+          transform: translateX(-110%);
+        }
+        to {
+          transform: translateX(280%);
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .home-loader {
+          transition: none;
+        }
+        .home-loader-logo,
+        .home-loader-spinner,
+        .home-loader-spinner::after,
+        .home-loader-progress span {
+          animation: none;
+        }
+      }
+    </style>
   </head>
   <body>
+    <div
+      class="home-loader"
+      id="home-loader"
+      role="status"
+      aria-live="polite"
+      aria-label="Loading TIPIZ"
+    >
+      <div class="home-loader-content">
+        <div class="home-loader-logo" aria-hidden="true">TIPIZ</div>
+        <div class="home-loader-spinner" aria-hidden="true"></div>
+        <p class="home-loader-message">Getting movies and series ready</p>
+        <div class="home-loader-progress" aria-hidden="true"><span></span></div>
+      </div>
+    </div>
+    <script>
+      window.homeLoaderFallback = window.setTimeout(function () {
+        var loader = document.getElementById("home-loader");
+        if (loader) loader.classList.add("home-loader-hidden");
+      }, 10000);
+    </script>
+
     <!-- ═══════════ NAVBAR ═══════════ -->
     <header class="site-header">
       <div class="container">
@@ -222,10 +348,26 @@
 
     <script type="module" src="/js/api.js"></script>
     <script type="module">
-      import { renderRow, initPage } from "/js/app.js";
+      import { detailUrl, renderRow, initPage } from "/js/app.js";
       const { api } = window.tipiz;
+      const homeLoader = document.getElementById("home-loader");
+      const loaderStartedAt = performance.now();
+      let loaderDismissed = false;
 
       initPage();
+
+      function hideHomeLoader() {
+        if (loaderDismissed) return;
+        loaderDismissed = true;
+        window.clearTimeout(window.homeLoaderFallback);
+
+        const remainingTime = Math.max(0, 450 - (performance.now() - loaderStartedAt));
+        window.setTimeout(() => {
+          if (!homeLoader) return;
+          homeLoader.classList.add("home-loader-hidden");
+          homeLoader.setAttribute("aria-hidden", "true");
+        }, remainingTime);
+      }
 
       async function loadHome() {
         try {
@@ -261,7 +403,7 @@
                   </div>
                   <p class="hero-overview">${h.overview || ""}</p>
                   <div class="hero-actions">
-                    <a href="/movie.html?id=${h.id}" class="btn-hero btn-hero-primary">▶ Watch Now</a>
+                    <a href="${detailUrl("movie", h.title, h.id)}" class="btn-hero btn-hero-primary">▶ Watch Now</a>
                   </div>
                 </div>
               </div>
@@ -290,6 +432,8 @@
           renderRow(document.getElementById("r-series"), series12);
         } catch (err) {
           console.error("Failed to load homepage:", err);
+        } finally {
+          hideHomeLoader();
         }
       }
 

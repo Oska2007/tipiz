@@ -166,21 +166,37 @@
 
     <script type="module" src="/js/api.js"></script>
     <script type="module">
-      import { esc, initPage, placeholderPoster } from "/js/app.js";
+      import {
+        detailUrl,
+        esc,
+        initPage,
+        placeholderPoster,
+        contentIdFromPath,
+        slugify,
+      } from "/js/app.js";
 
       const { api } = window.tipiz;
       const page = document.getElementById("episode-page");
       const params = new URLSearchParams(window.location.search);
-      const episodeId = params.get("id");
-      const seriesId = params.get("series");
+      const episodeId =
+        params.get("id") || contentIdFromPath(window.location.pathname);
+      const seriesRef = params.get("series");
+      const seriesId = seriesRef
+        ? (seriesRef.match(/-(\d+)$/) || [])[1] || seriesRef
+        : null;
       const seasonParam = params.get("season");
       const seasonNumber = Number(seasonParam);
 
       initPage();
 
       function showError(message) {
-        const backLink = seriesId
-          ? `<a href="/tv.html?id=${encodeURIComponent(seriesId)}" class="btn-nav">← Back to Series</a>`
+        const backHref = /-[0-9]+$/.test(seriesRef || "")
+          ? `/tv/${encodeURIComponent(seriesRef)}`
+          : seriesId
+            ? `/tv.html?id=${encodeURIComponent(seriesId)}`
+            : null;
+        const backLink = backHref
+          ? `<a href="${backHref}" class="btn-nav">← Back to Series</a>`
           : `<a href="/browse.html?type=tv" class="btn-nav">← Browse TV Series</a>`;
         page.innerHTML = `
           <div class="container">
@@ -192,8 +208,9 @@
           </div>`;
       }
 
-      function episodeUrl(episode) {
-        return `/episode.html?id=${encodeURIComponent(episode.id)}&series=${encodeURIComponent(seriesId)}&season=${encodeURIComponent(seasonNumber)}`;
+      function episodeUrl(episode, seriesName) {
+        const seriesSlugRef = `${slugify(seriesName)}-${encodeURIComponent(seriesId)}`;
+        return `${detailUrl("episode", episode.name || `Episode ${episode.episode_number}`, episode.id)}?series=${encodeURIComponent(seriesSlugRef)}&season=${encodeURIComponent(seasonNumber)}`;
       }
 
       function formatDate(value) {
@@ -247,6 +264,14 @@
           }
 
           const episodeName = episode.name || "Untitled Episode";
+          const canonicalUrl = `${detailUrl("episode", episodeName, episode.id)}?series=${encodeURIComponent(`${slugify(series.name)}-${series.id}`)}&season=${encodeURIComponent(seasonNumber)}`;
+          if (`${window.location.pathname}${window.location.search}` !== canonicalUrl) {
+            history.replaceState(
+              null,
+              "",
+              canonicalUrl,
+            );
+          }
           const image =
             episode.still_large_url ||
             episode.still_url ||
@@ -287,7 +312,7 @@
                 </div>
                 ${
                   nextEpisode
-                    ? `<div class="episode-detail-next-row"><a class="episode-next-button" href="${episodeUrl(nextEpisode)}">Next Episode <span aria-hidden="true">→</span></a></div>`
+                    ? `<div class="episode-detail-next-row"><a class="episode-next-button" href="${episodeUrl(nextEpisode, series.name)}">Next Episode <span aria-hidden="true">→</span></a></div>`
                     : ""
                 }
               </div>

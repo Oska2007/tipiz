@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tipiz-pwa-v4';
+const CACHE_NAME = 'tipiz-pwa-v5';
 const PRECACHE_URLS = [
   '/offline.html',
   '/manifest.webmanifest',
