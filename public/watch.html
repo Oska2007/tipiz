@@ -682,7 +682,7 @@
       }
       video::cue {
         color: #fff;
-        background: rgba(0, 0, 0, 0.72);
+        background: transparent;
         font-family: system-ui, sans-serif;
         font-size: 1.05em;
       }
@@ -1227,6 +1227,17 @@
           track.label = subtitle.label || subtitle.language || "Subtitle";
           track.srclang = subtitle.language || "en";
           track.src = subtitle.url;
+          track.addEventListener(
+            "load",
+            () => {
+              const cues = track.track.cues;
+              if (!cues) return;
+              for (const cue of cues) {
+                if ("line" in cue) cue.line = -3;
+              }
+            },
+            { once: true },
+          );
           video.appendChild(track);
         });
       }
