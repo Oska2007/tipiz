@@ -57,6 +57,116 @@
           ),
           #080a10;
       }
+      .page-loader {
+        position: fixed;
+        z-index: 10000;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+        background:
+          radial-gradient(
+            ellipse at 50% 42%,
+            rgba(91, 75, 165, 0.24),
+            transparent 40%
+          ),
+          radial-gradient(
+            ellipse at 15% 100%,
+            rgba(42, 91, 176, 0.13),
+            transparent 38%
+          ),
+          #080a10;
+        opacity: 1;
+        visibility: visible;
+        transition:
+          opacity 0.35s ease,
+          visibility 0.35s ease;
+      }
+      .page-loader.is-hidden {
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+      }
+      .page-loader-card {
+        width: min(390px, 100%);
+        padding: 30px 28px 25px;
+        border: 1px solid rgba(255, 255, 255, 0.11);
+        border-radius: 22px;
+        background: linear-gradient(
+          145deg,
+          rgba(24, 26, 40, 0.88),
+          rgba(12, 14, 23, 0.88)
+        );
+        box-shadow:
+          0 30px 90px rgba(0, 0, 0, 0.42),
+          0 0 55px rgba(139, 92, 246, 0.08);
+        text-align: center;
+        backdrop-filter: blur(18px);
+      }
+      .page-loader-logo {
+        display: inline-block;
+        margin-bottom: 27px;
+      }
+      .page-loader-spinner {
+        position: relative;
+        width: 58px;
+        height: 58px;
+        margin: 0 auto 21px;
+        border: 2px solid rgba(255, 255, 255, 0.09);
+        border-top-color: #a78bfa;
+        border-right-color: #6ea3ff;
+        border-radius: 50%;
+        animation: page-loader-spin 0.9s linear infinite;
+      }
+      .page-loader-spinner::after {
+        position: absolute;
+        inset: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 50%;
+        content: "";
+      }
+      .page-loader-title {
+        margin: 0;
+        color: #fff;
+        font-size: 17px;
+        font-weight: 750;
+        letter-spacing: -0.2px;
+      }
+      .page-loader-message {
+        margin: 8px 0 20px;
+        color: rgba(226, 228, 239, 0.58);
+        font-size: 12px;
+        line-height: 1.6;
+      }
+      .page-loader-progress {
+        height: 3px;
+        overflow: hidden;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.09);
+      }
+      .page-loader-progress::after {
+        display: block;
+        width: 38%;
+        height: 100%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, #8b5cf6, #6ea3ff);
+        box-shadow: 0 0 14px rgba(139, 92, 246, 0.55);
+        content: "";
+        animation: page-loader-progress 1.5s ease-in-out infinite;
+      }
+      @keyframes page-loader-spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      @keyframes page-loader-progress {
+        from {
+          transform: translateX(-110%);
+        }
+        to {
+          transform: translateX(280%);
+        }
+      }
       .watch-header {
         width: min(1500px, 100%);
         margin: 0 auto;
@@ -65,32 +175,6 @@
         align-items: center;
         justify-content: space-between;
         gap: 16px;
-      }
-      .back-link {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        min-height: 40px;
-        padding: 0 14px;
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        border-radius: 999px;
-        color: #d8d9e2;
-        background: rgba(255, 255, 255, 0.045);
-        font-size: 13px;
-        font-weight: 650;
-        text-decoration: none;
-        transition: 0.2s ease;
-      }
-      .back-link:hover {
-        color: #fff;
-        border-color: rgba(255, 255, 255, 0.28);
-        background: rgba(255, 255, 255, 0.09);
-        text-decoration: none;
-      }
-      .back-link svg {
-        width: 16px;
-        height: 16px;
       }
       .watch-main {
         width: min(1500px, 100%);
@@ -567,18 +651,6 @@
         margin: 26px auto 0;
         padding: 0 10px;
       }
-      .watch-info h1 {
-        margin-bottom: 7px;
-        color: #f7f7fb;
-        font-size: clamp(21px, 3vw, 28px);
-        font-weight: 800;
-        letter-spacing: -0.5px;
-      }
-      .watch-info .meta {
-        margin-bottom: 14px;
-        color: #969bad;
-        font-size: 13px;
-      }
       .watch-info p {
         max-width: 850px;
         color: #b7bac7;
@@ -691,11 +763,6 @@
           padding-top: 14px;
           padding-bottom: 14px;
         }
-        .back-link {
-          min-height: 36px;
-          padding: 0 11px;
-          font-size: 12px;
-        }
         .watch-main {
           padding: 0;
         }
@@ -791,20 +858,21 @@
     </style>
   </head>
   <body class="watch-page">
+    <div class="page-loader" id="page-loader" role="status" aria-live="polite">
+      <div class="page-loader-card">
+        <a class="site-logo page-loader-logo" href="/" aria-label="TIPIZ home"
+          >TIPIZ</a
+        >
+        <div class="page-loader-spinner" aria-hidden="true"></div>
+        <h1 class="page-loader-title">Preparing your video</h1>
+        <p class="page-loader-message">
+          Getting the player ready. This should only take a moment.
+        </p>
+        <div class="page-loader-progress" aria-hidden="true"></div>
+      </div>
+    </div>
     <header class="watch-header">
       <a class="site-logo" href="/" aria-label="TIPIZ home">TIPIZ</a>
-      <a class="back-link" href="/">
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          aria-hidden="true"
-        >
-          <path d="m15 18-6-6 6-6M9 12h11" />
-        </svg>
-        Back to browse
-      </a>
     </header>
 
     <main class="watch-main">
@@ -1025,8 +1093,6 @@
       </section>
 
       <section class="watch-info" id="watch-info">
-        <h1 id="info-title"></h1>
-        <div class="meta" id="info-meta"></div>
         <p id="info-overview"></p>
         <div class="watch-actions">
           <a href="#" class="next-episode-btn" id="next-btn">
@@ -1116,6 +1182,7 @@
       const id = params.get("id");
 
       const video = document.getElementById("video");
+      const pageLoader = document.getElementById("page-loader");
       const player = document.getElementById("player-wrap");
       const settingsButton = document.getElementById("btn-settings");
       const settingsPanel = document.getElementById("settings-panel");
@@ -1141,7 +1208,13 @@
           : `${minutes}:${String(secs).padStart(2, "0")}`;
       }
 
+      function hidePageLoader() {
+        pageLoader.classList.add("is-hidden");
+        pageLoader.setAttribute("aria-hidden", "true");
+      }
+
       function showPageError(title, message) {
+        hidePageLoader();
         player.style.display = "none";
         document.getElementById("watch-info").style.display = "none";
         const page = document.getElementById("error-page");
@@ -1152,6 +1225,7 @@
       }
 
       function showPlayerError(title, message) {
+        hidePageLoader();
         document.getElementById("player-error-title").textContent = title;
         document.getElementById("player-error-message").textContent = message;
         document.getElementById("player-error").classList.add("show");
@@ -1434,30 +1508,22 @@
           currentData = data;
           const title = data.media?.title || data.media?.name || "Now Playing";
           document.title = `${title} — TIPIZ`;
-          document.getElementById("watch-info").style.display = "block";
-          document.getElementById("info-title").textContent = title;
           document.getElementById("player-title").textContent = title;
 
-          if (type === "episode") {
-            const episodeNumber = data.media.episode_number
-              ? `Episode ${data.media.episode_number}`
-              : "TV Episode";
-            document.getElementById("info-meta").textContent = episodeNumber;
-          } else {
-            document.getElementById("info-meta").textContent = data.media
-              .runtime
-              ? `${data.media.runtime} min`
-              : "MOVIE";
-          }
-          if (data.media?.overview)
+          const watchInfo = document.getElementById("watch-info");
+          if (data.media?.overview) {
             document.getElementById("info-overview").textContent =
               data.media.overview;
-          else document.getElementById("info-overview").style.display = "none";
+            watchInfo.style.display = "block";
+          } else {
+            document.getElementById("info-overview").style.display = "none";
+          }
 
           if (data.media?.next_episode?.id) {
             const nextButton = document.getElementById("next-btn");
             nextButton.href = `/watch.html?type=episode&id=${encodeURIComponent(data.media.next_episode.id)}`;
             nextButton.style.display = "inline-flex";
+            watchInfo.style.display = "block";
           }
 
           player.style.display = "block";
@@ -1491,6 +1557,7 @@
       video.addEventListener("playing", () => setLoading(false));
       video.addEventListener("seeked", () => setLoading(false));
       video.addEventListener("loadedmetadata", () => {
+        hidePageLoader();
         setLoading(false);
         applyResumePoint();
         enableDefaultSubtitle();
